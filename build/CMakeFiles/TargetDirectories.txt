@@ -1,0 +1,5 @@
+/home/kufi/workspace/voiceAgent/build/CMakeFiles/cpp_voice_agent.dir
+/home/kufi/workspace/voiceAgent/build/CMakeFiles/edit_cache.dir
+/home/kufi/workspace/voiceAgent/build/CMakeFiles/rebuild_cache.dir
+/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-build/CMakeFiles/edit_cache.dir
+/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,51 @@
+{
+  "common": {
+    "alsaCaptureDevice": "",
+    "alsaPlaybackDevice": ""
+  },
+  "transcriber": {
+    "provider": "azure",
+    "captureDurationSeconds": 6,
+    "vadEnabled": true,
+    "vadFrameMs": 20,
+    "vadStartSpeechMs": 200,
+    "vadEndSilenceMs": 800,
+    "vadMaxCaptureMs": 25000,
+    "vadPreRollMs": 200,
+    "vadAmplitudeThreshold": 2500,
+    "azure": {
+      "azureSpeechKey": "",
+      "azureSpeechRegion": "eastus"
+    },
+    "deepgram": {
+      "deepgramApiKey": "",
+      "deepgramBaseUrl": "https://api.deepgram.com",
+      "deepgramModel": "nova-3",
+      "deepgramSmartFormat": true,
+      "deepgramPunctuate": true,
+      "deepgramDiarize": false
+    }
+  },
+  "interpreter": {
+    "provider": "openai",
+    "openai": {
+      "openAiApiKey": "",
+      "openAiBaseUrl": "https://api.openai.com/v1",
+      "openAiModel": "gpt-4.1",
+      "openAiAssistantId": "",
+      "openAiRunPollIntervalMs": 500,
+      "openAiRunPollTimeoutSeconds": 90,
+      "systemPromptFilePath": "systemPrompt.txt"
+    }
+  },
+  "synthesizer": {
+    "provider": "azure",
+    "azure": {
+      "azureSpeechKey": "",
+      "azureSpeechRegion": "eastus",
+      "speechLanguage": "tr-TR",
+      "speechSampleRate": 16000,
+      "voiceName": "en-US-DustinMultilingualNeural"
+    }
+  }
+}
