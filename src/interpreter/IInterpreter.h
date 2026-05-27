@@ -11,7 +11,7 @@ public:
     virtual ~IInterpreter() = default;
     virtual void ResetSession(std::string systemPrompt) = 0;
     virtual InterpreterResponse Interpret(
-        const std::string& userText,
+    const InterpreterInput& input,
         const InterpreterStreamCallback& onPartialResponse) = 0;
 };
 

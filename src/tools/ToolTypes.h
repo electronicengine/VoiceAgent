@@ -27,11 +27,17 @@ struct ToolDefinition {
     ToolRiskLevel riskLevel = ToolRiskLevel::Safe;
 };
 
+struct ToolImageAttachment {
+    std::string filePath;
+    std::string detail = "high";
+};
+
 struct ToolResult {
     bool succeeded = false;
     bool blockedByPolicy = false;
     std::string summary;
     nlohmann::json output = nlohmann::json::object();
+    std::vector<ToolImageAttachment> imageAttachments;
 };
 
 struct AgentTurnResult {

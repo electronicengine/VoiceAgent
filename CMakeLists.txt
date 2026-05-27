@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 project(cpp_voice_agent LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -11,16 +15,73 @@ include(FetchContent)
 FetchContent_Declare(
     nlohmann_json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-find_package(CURL REQUIRED)
+find_package(CURL QUIET)
+if(NOT CURL_FOUND)
+    message(FATAL_ERROR
+        "libcurl runtime is installed, but the development package is missing. "
+        "Install libcurl4-openssl-dev (Ubuntu/Debian) so CMake can find curl/curl.h and libcurl."
+    )
+endif()
+
 find_package(ALSA REQUIRED)
+
+find_path(WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR
+    NAMES webrtc/modules/audio_processing/include/audio_processing.h
+    PATHS
+        /usr/include/webrtc_audio_processing
+        /usr/local/include/webrtc_audio_processing
+        /usr/include
+        /usr/local/include
+)
+find_library(WEBRTC_AUDIO_PROCESSING_LIBRARY
+    NAMES webrtc_audio_processing
+    PATHS
+        /usr/lib
+        /usr/local/lib
+        /usr/lib/x86_64-linux-gnu
+        /usr/lib/aarch64-linux-gnu
+)
+find_path(FVAD_INCLUDE_DIR
+    NAMES fvad.h
+    PATHS
+        /usr/include
+        /usr/local/include
+)
+find_library(FVAD_LIBRARY
+    NAMES fvad
+    PATHS
+        /usr/lib
+        /usr/local/lib
+        /usr/lib/x86_64-linux-gnu
+        /usr/lib/aarch64-linux-gnu
+)
+
+if(NOT WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR OR NOT WEBRTC_AUDIO_PROCESSING_LIBRARY)
+    message(FATAL_ERROR
+        "WebRTC AudioProcessing development files are required for the voice activity detector. "
+        "Install the headers and libwebrtc_audio_processing before configuring this project."
+    )
+endif()
+
+if(NOT FVAD_INCLUDE_DIR OR NOT FVAD_LIBRARY)
+    message(FATAL_ERROR
+        "libfvad development files are required for the voice activity detector. "
+        "Install fvad headers and library before configuring this project."
+    )
+endif()
 
 add_executable(cpp_voice_agent
     src/main.cpp
-    src/agent/AgentOrchestrator.cpp
+    src/agent/Agent.cpp
+    src/agent/AgentToolOrchestrator.cpp
+    src/agent/TextAgent.cpp
+    src/agent/VoiceAgent.cpp
     src/audio/AlsaMicrophone.cpp
+    src/audio/VoiceActivityDetector.cpp
     src/audio/AlsaSpeaker.cpp
     src/common/HttpClient.cpp
     src/common/StringUtils.cpp
@@ -29,17 +90,21 @@ add_executable(cpp_voice_agent
     src/synthesizer/AzureRestSynthesizer.cpp
     src/tools/PythonTool.cpp
     src/tools/ShellTool.cpp
+    src/tools/WebBrowserTool.cpp
     src/transcriber/ITranscriber.cpp
     src/transcriber/AzureTranscriber.cpp
     src/transcriber/DeepgramTranscriber.cpp
-    src/voice/VoiceAgent.cpp
 )
 
-target_include_directories(cpp_voice_agent PRIVATE src)
+target_include_directories(cpp_voice_agent PRIVATE src ${WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR} ${FVAD_INCLUDE_DIR})
+
+target_compile_definitions(cpp_voice_agent PRIVATE WEBRTC_AUDIO_PROCESSING_ONLY_BUILD WEBRTC_POSIX)
 
 target_link_libraries(cpp_voice_agent
     PRIVATE
     ALSA::ALSA
         CURL::libcurl
         nlohmann_json::nlohmann_json
+    ${WEBRTC_AUDIO_PROCESSING_LIBRARY}
+    ${FVAD_LIBRARY}
 )

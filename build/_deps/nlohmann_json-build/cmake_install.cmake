@@ -1,4 +1,4 @@
-# Install script for directory: /home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-src
+# Install script for directory: /home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

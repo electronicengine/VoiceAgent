@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.5)
 
 # Make file names absolute:
 #
-get_filename_component(filename "/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/json.tar.xz" ABSOLUTE)
-get_filename_component(directory "/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-src" ABSOLUTE)
+get_filename_component(filename "/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/json.tar.xz" ABSOLUTE)
+get_filename_component(directory "/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-src" ABSOLUTE)
 
 message(STATUS "extracting...
      src='${filename}'

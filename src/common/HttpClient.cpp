@@ -156,4 +156,66 @@ HttpResponse HttpClient::PostStream(
     return response;
 }
 
+HttpResponse HttpClient::PostMultipart(
+    const std::string& url,
+    const std::vector<std::string>& headers,
+    const std::vector<MultipartField>& fields,
+    const MultipartFile& file,
+    long timeoutSeconds) const {
+    CURL* curl = curl_easy_init();
+    if (curl == nullptr) {
+        throw std::runtime_error("curl_easy_init failed.");
+    }
+
+    std::string responseBody;
+    struct curl_slist* headerList = nullptr;
+    for (const auto& header : headers) {
+        headerList = curl_slist_append(headerList, header.c_str());
+    }
+
+    curl_mime* mime = curl_mime_init(curl);
+    if (mime == nullptr) {
+        curl_slist_free_all(headerList);
+        curl_easy_cleanup(curl);
+        throw std::runtime_error("curl_mime_init failed.");
+    }
+
+    for (const auto& field : fields) {
+        curl_mimepart* part = curl_mime_addpart(mime);
+        curl_mime_name(part, field.name.c_str());
+        curl_mime_data(part, field.value.c_str(), CURL_ZERO_TERMINATED);
+    }
+
+    curl_mimepart* filePart = curl_mime_addpart(mime);
+    curl_mime_name(filePart, file.fieldName.c_str());
+    curl_mime_filedata(filePart, file.filePath.c_str());
+    if (!file.contentType.empty()) {
+        curl_mime_type(filePart, file.contentType.c_str());
+    }
+    if (!file.fileName.empty()) {
+        curl_mime_filename(filePart, file.fileName.c_str());
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeoutSeconds);
+
+    const CURLcode result = curl_easy_perform(curl);
+    long responseCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+
+    curl_mime_free(mime);
+    curl_slist_free_all(headerList);
+    curl_easy_cleanup(curl);
+
+    if (result != CURLE_OK) {
+        throw std::runtime_error(std::string("HTTP request failed: ") + curl_easy_strerror(result));
+    }
+
+    return HttpResponse{responseCode, responseBody};
+}
+
 }  // namespace voice_agent

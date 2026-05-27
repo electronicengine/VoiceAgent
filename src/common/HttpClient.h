@@ -13,6 +13,18 @@ struct HttpRequest {
     long timeoutSeconds = 90L;
 };
 
+struct MultipartField {
+    std::string name;
+    std::string value;
+};
+
+struct MultipartFile {
+    std::string fieldName;
+    std::string filePath;
+    std::string contentType;
+    std::string fileName;
+};
+
 struct HttpResponse {
     long statusCode = 0;
     std::string body;
@@ -23,6 +35,12 @@ public:
     HttpResponse Get(const HttpRequest& request) const;
     HttpResponse Post(const HttpRequest& request) const;
     HttpResponse PostStream(const HttpRequest& request, const std::function<void(const std::string&)>& onChunk) const;
+    HttpResponse PostMultipart(
+        const std::string& url,
+        const std::vector<std::string>& headers,
+        const std::vector<MultipartField>& fields,
+        const MultipartFile& file,
+        long timeoutSeconds = 90L) const;
 };
 
 }  // namespace voice_agent

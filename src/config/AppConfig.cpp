@@ -275,6 +275,7 @@ AppConfig LoadConfig() {
     const nlohmann::json* synthesizerAzureJson = ReadSection(synthesizerJson, "azure");
 
     AppConfig config;
+    config.agentMode = ToLower(ReadStringField(commonJson, configJson, "agentMode", "voice"));
     config.transcriberProvider = ToLower(
         ReadStringField(transcriberJson, configJson, "provider", ReadStringField(configJson, "transcriberProvider", "azure"))
     );
@@ -400,14 +401,17 @@ AppConfig LoadConfig() {
         );
     }
 
-    if (config.transcriberProvider != "azure" && config.transcriberProvider != "deepgram" && config.transcriberProvider != "text") {
-        throw std::runtime_error("transcriber.provider must be either 'azure', 'deepgram', or 'text'.");
+    if (config.agentMode != "voice" && config.agentMode != "text") {
+        throw std::runtime_error("common.agentMode must be either 'voice' or 'text'.");
+    }
+    if (config.transcriberProvider != "azure" && config.transcriberProvider != "deepgram") {
+        throw std::runtime_error("transcriber.provider must be either 'azure' or 'deepgram'.");
     }
     if (config.interpreterProvider != "openai") {
         throw std::runtime_error("interpreter.provider must be 'openai'.");
     }
-    if (config.synthesizerProvider != "azure" && config.synthesizerProvider != "text") {
-        throw std::runtime_error("synthesizer.provider must be either 'azure' or 'text'.");
+    if (config.synthesizerProvider != "azure") {
+        throw std::runtime_error("synthesizer.provider must be 'azure'.");
     }
     if (config.transcriberProvider == "azure") {
         if (config.azureSpeechKey.empty()) {

@@ -5,11 +5,14 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <cctype>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace voice_agent {
 
@@ -33,6 +36,29 @@ ResponseSegmentType SegmentTypeFromFenceLanguage(const std::string& language) {
 
 bool IsSpeakable(ResponseSegmentType type) {
     return type == ResponseSegmentType::Speech;
+}
+
+void LogInterpreterMessage(const std::string& stage, const std::string& message) {
+    std::cout << "[OpenAiInterpreter][" << stage << "] " << message << "\n";
+    std::cout.flush();
+}
+
+std::string DetectMimeType(const std::string& filePath) {
+    const std::string extension = ToLower(std::filesystem::path(filePath).extension().string());
+    if (extension == ".png") {
+        return "image/png";
+    }
+    if (extension == ".jpg" || extension == ".jpeg") {
+        return "image/jpeg";
+    }
+    if (extension == ".webp") {
+        return "image/webp";
+    }
+    if (extension == ".gif") {
+        return "image/gif";
+    }
+
+    throw std::runtime_error("Unsupported image type for interpreter input: " + filePath);
 }
 
 bool IsToolCallPayload(const json& payload) {
@@ -151,13 +177,13 @@ void OpenAiInterpreter::ResetSession(std::string systemPrompt) {
 }
 
 InterpreterResponse OpenAiInterpreter::Interpret(
-    const std::string& userText,
+    const InterpreterInput& input,
     const InterpreterStreamCallback& onPartialResponse) {
     if (assistantId_.empty() || threadId_.empty()) {
         throw std::runtime_error("OpenAI session is not initialized.");
     }
 
-    AddUserMessageToThread(userText);
+    AddUserMessageToThread(input);
     StreamParseState state;
     CreateRun(state, onPartialResponse);
     if (!state.sseBuffer.empty()) {
@@ -188,6 +214,13 @@ InterpreterResponse OpenAiInterpreter::Interpret(
 std::vector<std::string> OpenAiInterpreter::DefaultHeaders() const {
     return {
         "Content-Type: application/json",
+        "Authorization: Bearer " + config_.openAiApiKey,
+        "OpenAI-Beta: assistants=v2",
+    };
+}
+
+std::vector<std::string> OpenAiInterpreter::MultipartHeaders() const {
+    return {
         "Authorization: Bearer " + config_.openAiApiKey,
         "OpenAI-Beta: assistants=v2",
     };
@@ -235,11 +268,76 @@ std::string OpenAiInterpreter::CreateThread() const {
     return responseJson.at("id").get<std::string>();
 }
 
-void OpenAiInterpreter::AddUserMessageToThread(const std::string& userText) const {
-    const json requestBody = {
+std::string OpenAiInterpreter::UploadInputFile(const InterpreterImageInput& image) const {
+    const std::filesystem::path path(image.filePath);
+    if (!std::filesystem::exists(path)) {
+        throw std::runtime_error("Interpreter image file not found: " + image.filePath);
+    }
+
+    LogInterpreterMessage("upload_file", "Uploading image: " + path.string());
+    const HttpResponse response = httpClient_.PostMultipart(
+        config_.openAiBaseUrl + "/files",
+        MultipartHeaders(),
+        {{"purpose", "assistants"}},
+        MultipartFile{
+            "file",
+            path.string(),
+            DetectMimeType(path.string()),
+            path.filename().string()
+        }
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw std::runtime_error(
+            "OpenAI file upload failed with HTTP " +
+            std::to_string(response.statusCode) + ": " + response.body
+        );
+    }
+
+    const json responseJson = json::parse(response.body, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object() || !responseJson.contains("id")) {
+        throw std::runtime_error("OpenAI file upload returned an invalid response: " + response.body);
+    }
+
+    const std::string fileId = responseJson.at("id").get<std::string>();
+    LogInterpreterMessage("upload_file", "Uploaded image file_id=" + fileId);
+    return fileId;
+}
+
+json OpenAiInterpreter::BuildMessageContent(const InterpreterInput& input) const {
+    json content = json::array();
+    if (!Trim(input.text).empty()) {
+        content.push_back({{"type", "text"}, {"text", input.text}});
+    }
+
+    for (const auto& image : input.images) {
+        const std::string fileId = UploadInputFile(image);
+        content.push_back({
+            {"type", "image_file"},
+            {"image_file", {
+                {"file_id", fileId}
+            }}
+        });
+    }
+
+    return content;
+}
+
+void OpenAiInterpreter::AddUserMessageToThread(const InterpreterInput& input) const {
+    if (Trim(input.text).empty() && input.images.empty()) {
+        throw std::runtime_error("Interpreter input cannot be empty.");
+    }
+
+    json requestBody = {
         {"role", "user"},
-        {"content", userText},
     };
+
+    if (input.images.empty()) {
+        requestBody["content"] = input.text;
+    } else {
+        requestBody["content"] = BuildMessageContent(input);
+    }
+
+    LogInterpreterMessage("message_create", "Creating thread message. imageCount=" + std::to_string(input.images.size()));
 
     HttpRequest request;
     request.url = config_.openAiBaseUrl + "/threads/" + threadId_ + "/messages";

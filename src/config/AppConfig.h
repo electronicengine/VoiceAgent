@@ -5,6 +5,7 @@
 namespace voice_agent {
 
 struct AppConfig {
+    std::string agentMode;
     std::string transcriberProvider;
     std::string interpreterProvider;
     std::string synthesizerProvider;

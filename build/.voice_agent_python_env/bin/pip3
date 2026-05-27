@@ -1,4 +1,4 @@
-#!/home/kufi/workspace/voiceAgent/build/.voice_agent_python_env/bin/python3
+#!/home/ybulb/workspace/VoiceAgent/build/.voice_agent_python_env/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

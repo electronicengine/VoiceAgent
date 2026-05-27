@@ -16,7 +16,7 @@ public:
 
     void ResetSession(std::string systemPrompt) override;
     InterpreterResponse Interpret(
-        const std::string& userText,
+        const InterpreterInput& input,
         const InterpreterStreamCallback& onPartialResponse) override;
 
 private:
@@ -36,9 +36,12 @@ private:
     };
 
     std::vector<std::string> DefaultHeaders() const;
+    std::vector<std::string> MultipartHeaders() const;
     std::string CreateAssistant(const std::string& instructions) const;
     std::string CreateThread() const;
-    void AddUserMessageToThread(const std::string& userText) const;
+    void AddUserMessageToThread(const InterpreterInput& input) const;
+    std::string UploadInputFile(const InterpreterImageInput& image) const;
+    nlohmann::json BuildMessageContent(const InterpreterInput& input) const;
     void CreateRun(StreamParseState& state, const InterpreterStreamCallback& onPartialResponse) const;
     std::string ExtractMessageText(const nlohmann::json& messageJson) const;
     InterpreterResponse BuildStructuredResponse(const std::string& rawText) const;

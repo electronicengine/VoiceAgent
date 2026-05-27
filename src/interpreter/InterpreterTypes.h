@@ -8,6 +8,16 @@
 
 namespace voice_agent {
 
+struct InterpreterImageInput {
+    std::string filePath;
+    std::string detail = "high";
+};
+
+struct InterpreterInput {
+    std::string text;
+    std::vector<InterpreterImageInput> images;
+};
+
 struct ConversationMessage {
     std::string role;
     std::string content;

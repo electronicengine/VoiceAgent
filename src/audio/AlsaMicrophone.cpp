@@ -1,10 +1,10 @@
 #include "audio/AlsaMicrophone.h"
+#include "audio/VoiceActivityDetector.h"
 
 #include <alsa/asoundlib.h>
 
 #include <algorithm>
 #include <cstdint>
-#include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
@@ -56,35 +56,6 @@ std::vector<char> BuildWavBytes(const std::vector<char>& pcmData, int sampleRate
 
 std::size_t FramesFromMilliseconds(int sampleRate, int milliseconds) {
     return std::max<std::size_t>(1, static_cast<std::size_t>(sampleRate) * static_cast<std::size_t>(milliseconds) / 1000);
-}
-
-int PeakAmplitude(const char* chunkData, std::size_t capturedFrames, std::size_t bytesPerFrame) {
-    const auto* samples = reinterpret_cast<const std::int16_t*>(chunkData);
-    const std::size_t sampleCount = capturedFrames * bytesPerFrame / sizeof(std::int16_t);
-
-    int maxAmplitude = 0;
-    for (std::size_t index = 0; index < sampleCount; ++index) {
-        const int amplitude = std::abs(static_cast<int>(samples[index]));
-        if (amplitude > maxAmplitude) {
-            maxAmplitude = amplitude;
-        }
-    }
-
-    return maxAmplitude;
-}
-
-void AppendChunk(std::vector<char>& destination, const char* chunkData, std::size_t capturedFrames, std::size_t bytesPerFrame) {
-    const std::size_t byteCount = capturedFrames * bytesPerFrame;
-    destination.insert(destination.end(), chunkData, chunkData + byteCount);
-}
-
-void AppendPreRoll(std::vector<char>& preRollData, const char* chunkData, std::size_t capturedFrames, std::size_t bytesPerFrame, std::size_t maxBytes) {
-    AppendChunk(preRollData, chunkData, capturedFrames, bytesPerFrame);
-    if (preRollData.size() <= maxBytes) {
-        return;
-    }
-
-    preRollData.erase(preRollData.begin(), preRollData.begin() + static_cast<std::ptrdiff_t>(preRollData.size() - maxBytes));
 }
 
 std::size_t MillisecondsFromFrames(std::size_t frameCount, int sampleRate) {
@@ -179,19 +150,19 @@ std::vector<char> AlsaMicrophone::CaptureWavBytes() const {
         }
 
         std::vector<char> chunkBuffer(chunkFrames * bytesPerFrame);
-        std::vector<char> preRollData;
-        const std::size_t preRollBytes = FramesFromMilliseconds(sampleRate_, vadPreRollMs_) * bytesPerFrame;
-        const std::size_t speechStartFrames = FramesFromMilliseconds(sampleRate_, vadStartSpeechMs_);
-        const std::size_t trailingSilenceFrames = FramesFromMilliseconds(sampleRate_, vadEndSilenceMs_);
+        const VadSettings vadSettings{
+            .enabled = vadEnabled_,
+            .sampleRate = sampleRate_,
+            .startSpeechMs = vadStartSpeechMs_,
+            .endSilenceMs = vadEndSilenceMs_,
+            .preRollMs = vadPreRollMs_,
+            .amplitudeThreshold = vadAmplitudeThreshold_,
+        };
+        VoiceActivityDetector vadController(vadSettings, bytesPerFrame);
         std::size_t totalCapturedFrames = 0;
-        std::size_t consecutiveSpeechFrames = 0;
-        std::size_t consecutiveSilenceFrames = 0;
-        int sessionPeakAmplitude = 0;
-        bool detectedSpeech = false;
 
         if (vadEnabled_) {
-            std::cerr << "[mic] Listening with VAD"
-                      << " threshold=" << vadAmplitudeThreshold_
+            std::cerr << "[mic] Listening with WebRTC/libfvad VAD"
                       << " frameMs=" << vadFrameMs_
                       << " startSpeechMs=" << vadStartSpeechMs_
                       << " endSilenceMs=" << vadEndSilenceMs_
@@ -223,59 +194,33 @@ std::vector<char> AlsaMicrophone::CaptureWavBytes() const {
             const std::size_t capturedFrames = static_cast<std::size_t>(result);
             totalCapturedFrames += capturedFrames;
 
-            if (!vadEnabled_) {
-                AppendChunk(pcmData, chunkBuffer.data(), capturedFrames, bytesPerFrame);
-                continue;
+            const VadChunkResult vadResult = vadController.ProcessChunk(chunkBuffer.data(), capturedFrames, pcmData);
+            if (vadResult.event == VadChunkEvent::SpeechStarted) {
+                std::cerr << "[mic] Speech started after "
+                          << MillisecondsFromFrames(totalCapturedFrames, sampleRate_)
+                          << " ms peakAmplitude=" << vadController.SessionPeakAmplitude()
+                          << "\n";
             }
-
-            const int chunkPeakAmplitude = PeakAmplitude(chunkBuffer.data(), capturedFrames, bytesPerFrame);
-            sessionPeakAmplitude = std::max(sessionPeakAmplitude, chunkPeakAmplitude);
-            const bool chunkHasSpeech = chunkPeakAmplitude >= vadAmplitudeThreshold_;
-
-            if (!detectedSpeech) {
-                AppendPreRoll(preRollData, chunkBuffer.data(), capturedFrames, bytesPerFrame, preRollBytes);
-                if (chunkHasSpeech) {
-                    consecutiveSpeechFrames += capturedFrames;
-                    if (consecutiveSpeechFrames >= speechStartFrames) {
-                        detectedSpeech = true;
-                        pcmData.insert(pcmData.end(), preRollData.begin(), preRollData.end());
-                        preRollData.clear();
-                        std::cerr << "[mic] Speech started after "
-                                  << MillisecondsFromFrames(totalCapturedFrames, sampleRate_)
-                                  << " ms peakAmplitude=" << sessionPeakAmplitude
-                                  << "\n";
-                    }
-                } else {
-                    consecutiveSpeechFrames = 0;
-                }
-                continue;
+            if (vadResult.event == VadChunkEvent::SpeechEnded) {
+                std::cerr << "[mic] Speech ended due to silence after "
+                          << MillisecondsFromFrames(totalCapturedFrames, sampleRate_)
+                          << " ms trailingSilenceMs="
+                          << MillisecondsFromFrames(vadController.ConsecutiveSilenceFrames(), sampleRate_)
+                          << " peakAmplitude=" << vadController.SessionPeakAmplitude()
+                          << "\n";
             }
-
-            AppendChunk(pcmData, chunkBuffer.data(), capturedFrames, bytesPerFrame);
-            if (chunkHasSpeech) {
-                consecutiveSilenceFrames = 0;
-            } else {
-                consecutiveSilenceFrames += capturedFrames;
-                if (consecutiveSilenceFrames >= trailingSilenceFrames) {
-                    std::cerr << "[mic] Speech ended due to silence after "
-                              << MillisecondsFromFrames(totalCapturedFrames, sampleRate_)
-                              << " ms trailingSilenceMs="
-                              << MillisecondsFromFrames(consecutiveSilenceFrames, sampleRate_)
-                              << " peakAmplitude=" << sessionPeakAmplitude
-                              << "\n";
-                    break;
-                }
+            if (!vadResult.shouldContinue) {
+                break;
             }
         }
 
         snd_pcm_close(pcmHandle);
         pcmHandle = nullptr;
 
-        if (vadEnabled_ && pcmData.empty()) {
+        if (vadEnabled_ && !vadController.DetectedSpeech()) {
             std::cerr << "[mic] No speech detected before maxCaptureMs="
                       << vadMaxCaptureMs_
-                      << " peakAmplitude=" << sessionPeakAmplitude
-                      << " threshold=" << vadAmplitudeThreshold_
+                      << " peakAmplitude=" << vadController.SessionPeakAmplitude()
                       << "\n";
             return {};
         }
@@ -283,7 +228,7 @@ std::vector<char> AlsaMicrophone::CaptureWavBytes() const {
         if (vadEnabled_ && totalCapturedFrames >= maxCaptureFrames) {
             std::cerr << "[mic] Capture stopped at maxCaptureMs="
                       << vadMaxCaptureMs_
-                      << " peakAmplitude=" << sessionPeakAmplitude
+                      << " peakAmplitude=" << vadController.SessionPeakAmplitude()
                       << " bytes=" << pcmData.size()
                       << "\n";
         }

@@ -6,12 +6,18 @@
 #include <cstdio>
 #include <memory>
 #include <stdexcept>
+#include <sys/wait.h>
 
 namespace voice_agent {
 
 namespace {
 
-std::string ReadCommandOutput(const std::string& command) {
+struct CommandExecution {
+    int exitCode = -1;
+    std::string output;
+};
+
+CommandExecution ReadCommandOutput(const std::string& command) {
     const std::string wrappedCommand = command + " 2>&1";
     std::array<char, 256> buffer{};
     std::string output;
@@ -30,7 +36,13 @@ std::string ReadCommandOutput(const std::string& command) {
         }
     }
 
-    return Trim(output);
+    const int status = pclose(pipe.release());
+    int exitCode = status;
+    if (WIFEXITED(status)) {
+        exitCode = WEXITSTATUS(status);
+    }
+
+    return CommandExecution{exitCode, Trim(output)};
 }
 
 }  // namespace
@@ -65,12 +77,30 @@ ToolResult ShellTool::Execute(const ToolCall& call) const {
         return ToolResult{false, false, "Eksik shell komutu.", {{"reason", "missing_command"}}};
     }
 
-    const std::string output = ReadCommandOutput(command);
+    const CommandExecution execution = ReadCommandOutput(command);
+    const bool succeeded = execution.exitCode == 0;
+    const std::string reason = succeeded
+        ? (execution.output.empty() ? "empty_output" : "ok")
+        : "non_zero_exit";
+    std::string summary;
+    if (!succeeded) {
+        summary = "Shell komutu hata ile sonlandi.";
+    } else if (execution.output.empty()) {
+        summary = "Komut calisti ancak cikti yok.";
+    } else {
+        summary = execution.output;
+    }
+
     return ToolResult{
-        true,
+        succeeded,
         false,
-        output.empty() ? "Komut calisti ancak cikti yok." : output,
-        {{"command", command}, {"output", output}}
+        summary,
+        {
+            {"command", command},
+            {"output", execution.output},
+            {"exitCode", execution.exitCode},
+            {"reason", reason}
+        }
     };
 }
 
