@@ -1,6 +1,6 @@
 {
   "common": {
-    "agentMode": "voice",
+    "agentMode": "text",
     "alsaCaptureDevice": "",
     "alsaPlaybackDevice": ""
   },
