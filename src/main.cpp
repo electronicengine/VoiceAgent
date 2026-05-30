@@ -6,8 +6,12 @@
 #include <sstream>
 #include <string>
 #include "common/CurlGlobalGuard.h"
+#include "common/IUserPromptProvider.h"
+#include "common/StdinUserPromptProvider.h"
+#include "common/VoiceUserPromptProvider.h"
 #include "agent/Agent.h"
 #include "config/AppConfig.h"
+#include "config/AccountStore.h"
 #include "agent/TextAgent.h"
 #include "interpreter/OpenAiInterpreter.h"
 #include "tools/PythonTool.h"
@@ -63,10 +67,24 @@ int main() {
             std::cout << "Loaded system prompt file: " << config.resolvedSystemPromptFilePath << "\n";
         }
 
+        voice_agent::AccountStore accountStore;
+        try {
+            accountStore.Load(
+                config.resolvedAccountsFilePath,
+                config.resolvedAccountsRootDir
+            );
+            if (accountStore.Loaded()) {
+                std::cout << "Loaded accounts file: " << config.resolvedAccountsFilePath
+                          << " (" << accountStore.AccountIds().size() << " hesap)\n";
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << "account.json yuklenemedi: " << ex.what() << "\n";
+        }
+
         auto interpreter = std::make_unique<voice_agent::OpenAiInterpreter>(config);
         voice_agent::ShellTool shellTool;
         voice_agent::PythonTool pythonTool;
-        voice_agent::WebBrowserTool webBrowserTool;
+        voice_agent::WebBrowserTool webBrowserTool(config, &accountStore);
         std::vector<voice_agent::ITool*> tools{&shellTool, &pythonTool, &webBrowserTool};
         voice_agent::AgentToolOrchestrator agentOrchestrator(*interpreter, tools, config);
         const std::string systemPrompt = BuildSystemPrompt(
@@ -75,8 +93,11 @@ int main() {
             config.maxAgentSteps
         );
 
+        std::unique_ptr<voice_agent::IUserPromptProvider> promptProvider;
         std::unique_ptr<voice_agent::Agent> agent;
         if (config.agentMode == "text") {
+            promptProvider = std::make_unique<voice_agent::StdinUserPromptProvider>();
+            webBrowserTool.SetUserPromptProvider(promptProvider.get());
             agent = std::make_unique<voice_agent::TextAgent>(
                 std::move(interpreter),
                 systemPrompt,
@@ -99,6 +120,15 @@ int main() {
                 config.speechSampleRate, config.alsaPlaybackDevice);
             auto voiceController = std::make_unique<voice_agent::VoiceController>(
                 std::move(microphone), std::move(speaker), vadConfig);
+
+            // Hook up the voice prompt provider before constructing VoiceAgent.
+            // Raw pointers reference objects whose ownership transfers below;
+            // VoiceAgent outlives the provider for the program's runtime, so
+            // these references remain valid until shutdown.
+            promptProvider = std::make_unique<voice_agent::VoiceUserPromptProvider>(
+                voiceController.get(), synthesizer.get(), transcriber.get()
+            );
+            webBrowserTool.SetUserPromptProvider(promptProvider.get());
 
             agent = std::make_unique<voice_agent::VoiceAgent>(
                 std::move(transcriber),

@@ -169,7 +169,10 @@ add_executable(cpp_voice_agent
     src/audio/VoiceActivityDetector.cpp
     src/audio/VoiceController.cpp
     src/common/HttpClient.cpp
+    src/common/StdinUserPromptProvider.cpp
     src/common/StringUtils.cpp
+    src/common/VoiceUserPromptProvider.cpp
+    src/config/AccountStore.cpp
     src/config/AppConfig.cpp
     src/interpreter/OpenAiInterpreter.cpp
     src/synthesizer/AzureRestSynthesizer.cpp

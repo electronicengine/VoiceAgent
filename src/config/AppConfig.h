@@ -43,6 +43,12 @@ struct AppConfig {
     bool dangerousShellEnabled = false;
     std::string alsaCaptureDevice;
     std::string alsaPlaybackDevice;
+    std::string webBrowserRunnerPath;
+    std::string accountsFilePath;
+    std::string resolvedAccountsFilePath;
+    std::string accountsRootDir;
+    std::string resolvedAccountsRootDir;
+    int browserPromptTimeoutSeconds = 180;
 };
 
 AppConfig LoadConfig();

@@ -1,6 +1,8 @@
 #include "audio/VoiceController.h"
 
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -186,6 +188,68 @@ void VoiceController::EmitUtterance() {
     if (cb) {
         cb(std::move(wav));
     }
+}
+
+bool VoiceController::CaptureNextUtterance(
+    int timeoutMs,
+    std::vector<char>& outWav,
+    const CancellationToken* token
+) {
+    std::mutex captureMutex;
+    std::condition_variable cv;
+    bool received = false;
+    std::vector<char> captured;
+
+    OnUtterance previousOnUtterance;
+    OnBargeIn previousOnBargeIn;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        previousOnUtterance = std::move(onUtterance_);
+        previousOnBargeIn = std::move(onBargeIn_);
+
+        onUtterance_ = [&](std::vector<char> wavBytes) {
+            std::lock_guard<std::mutex> capLock(captureMutex);
+            if (received) {
+                return;
+            }
+            captured = std::move(wavBytes);
+            received = true;
+            cv.notify_all();
+        };
+        // Suppress barge-in while we wait so the user's spoken answer does not
+        // cancel the turn that is currently running the WebBrowserTool.
+        onBargeIn_ = []() {};
+    }
+
+    bool ok = false;
+    {
+        std::unique_lock<std::mutex> capLock(captureMutex);
+        const auto deadline = std::chrono::steady_clock::now() +
+                              std::chrono::milliseconds(std::max(timeoutMs, 0));
+        while (!received) {
+            if (token != nullptr && token->IsCancelled()) {
+                break;
+            }
+            const auto now = std::chrono::steady_clock::now();
+            if (now >= deadline) {
+                break;
+            }
+            const auto pollDeadline = std::min(deadline,
+                now + std::chrono::milliseconds(200));
+            cv.wait_until(capLock, pollDeadline);
+        }
+        if (received) {
+            outWav = std::move(captured);
+            ok = true;
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        onUtterance_ = std::move(previousOnUtterance);
+        onBargeIn_ = std::move(previousOnBargeIn);
+    }
+    return ok;
 }
 
 }  // namespace voice_agent

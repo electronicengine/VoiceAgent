@@ -1,0 +1,26 @@
+{
+  "_comment": "Bu dosyayi 'account.json' olarak kopyalayip kendi hesaplariniz icin doldurun. account.json gitignore'dadir; yanlislikla commit'lenmez.",
+  "accountsRootDir": "",
+  "accounts": {
+    "github_main": {
+      "displayName": "GitHub - Kisisel",
+      "provider": "github",
+      "loginUrl": "https://github.com/login",
+      "loggedInUrl": "https://github.com/",
+      "loginCheckSelector": "header [aria-label='View profile and more']",
+      "email": "",
+      "password": "",
+      "profileDir": ""
+    },
+    "google_main": {
+      "displayName": "Google - Kisisel",
+      "provider": "google",
+      "loginUrl": "https://accounts.google.com/",
+      "loggedInUrl": "https://myaccount.google.com/",
+      "loginCheckSelector": "a[aria-label*='Google Hesabi'], a[aria-label*='Google Account']",
+      "email": "",
+      "password": "",
+      "profileDir": ""
+    }
+  }
+}

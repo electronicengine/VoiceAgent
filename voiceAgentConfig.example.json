@@ -4,6 +4,9 @@
     "alsaCaptureDevice": "",
     "alsaPlaybackDevice": ""
   },
+  "accountsFilePath": "account.json",
+  "accountsRootDir": ".voice_agent_browser/accounts",
+  "browserPromptTimeoutSeconds": 240,
   "transcriber": {
     "provider": "azure",
     "captureDurationSeconds": 6,

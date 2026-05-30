@@ -399,6 +399,23 @@ AppConfig LoadConfig() {
     config.dangerousShellEnabled = ReadBoolField(commonJson, configJson, "dangerousShellEnabled", false);
     config.alsaCaptureDevice = ReadStringField(commonJson, configJson, "alsaCaptureDevice");
     config.alsaPlaybackDevice = ReadStringField(commonJson, configJson, "alsaPlaybackDevice");
+    config.webBrowserRunnerPath = ReadStringField(configJson, "webBrowserRunnerPath", "src/tools/webbrowser_runner.py");
+    config.accountsFilePath = ReadStringField(configJson, "accountsFilePath", "account.json");
+    config.accountsRootDir = ReadStringField(configJson, "accountsRootDir", ".voice_agent_browser/accounts");
+    config.browserPromptTimeoutSeconds = ReadPositiveIntField(
+        configJson, "browserPromptTimeoutSeconds", 180
+    );
+
+    {
+        const std::filesystem::path resolvedAccountsFile = ResolveOptionalPath(configPath, config.accountsFilePath);
+        if (!resolvedAccountsFile.empty()) {
+            config.resolvedAccountsFilePath = resolvedAccountsFile.string();
+        }
+        const std::filesystem::path resolvedAccountsRoot = ResolveOptionalPath(configPath, config.accountsRootDir);
+        if (!resolvedAccountsRoot.empty()) {
+            config.resolvedAccountsRootDir = resolvedAccountsRoot.string();
+        }
+    }
 
     if (!transcriberAzureSpeechKey.empty() && !synthesizerAzureSpeechKey.empty() &&
         transcriberAzureSpeechKey != synthesizerAzureSpeechKey) {

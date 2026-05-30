@@ -3,8 +3,10 @@
 #include "audio/IMicrophone.h"
 #include "audio/ISpeaker.h"
 #include "audio/VoiceActivityDetector.h"
+#include "common/CancellationToken.h"
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -56,6 +58,15 @@ public:
     // Stop active playback immediately and start a playback cooldown in the
     // detector to suppress trailing-echo false positives.
     void StopSpeaking();
+
+    // Block until the next complete utterance arrives, or until `timeoutMs`
+    // elapses, or until `token` is cancelled. While waiting, the regular
+    // OnUtterance / OnBargeIn callbacks are temporarily suppressed so the
+    // captured speech does not feed back into the agent loop. Returns true
+    // and fills `outWav` on success; returns false otherwise.
+    bool CaptureNextUtterance(int timeoutMs,
+                              std::vector<char>& outWav,
+                              const CancellationToken* token);
 
     bool IsSpeakerActive() const { return speaker_->IsActive(); }
     int SampleRate() const { return microphone_->SampleRate(); }
