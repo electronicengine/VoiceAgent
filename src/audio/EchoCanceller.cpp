@@ -1,11 +1,10 @@
 #include "audio/EchoCanceller.h"
 
-#include <webrtc/modules/audio_processing/include/audio_processing.h>
-#include <webrtc/modules/interface/module_common_types.h>
+#include <modules/audio_processing/include/audio_processing.h>
 
 #include <algorithm>
-#include <cstring>
 #include <stdexcept>
+#include <vector>
 
 namespace voice_agent {
 
@@ -14,39 +13,35 @@ public:
     explicit Impl(int sampleRate)
         : sampleRate_(sampleRate),
           frameSamples_(static_cast<std::size_t>(sampleRate) * 10 / 1000),
-          apm_(webrtc::AudioProcessing::Create()) {
+          streamConfig_(sampleRate, 1),
+          apm_(webrtc::AudioProcessingBuilder().Create()) {
         if (apm_ == nullptr) {
             throw std::runtime_error("Failed to create WebRTC AudioProcessing instance.");
         }
 
-        apm_->echo_cancellation()->Enable(true);
-        apm_->echo_cancellation()->set_suppression_level(
-            webrtc::EchoCancellation::kHighSuppression);
-        apm_->noise_suppression()->Enable(true);
-        apm_->noise_suppression()->set_level(webrtc::NoiseSuppression::kHigh);
-        apm_->gain_control()->Enable(false);
+        webrtc::AudioProcessing::Config config;
+        // AEC3 (default echo controller in webrtc-audio-processing v2).
+        config.echo_canceller.enabled = true;
+        config.echo_canceller.mobile_mode = false;
+        config.echo_canceller.enforce_high_pass_filtering = true;
+        config.high_pass_filter.enabled = true;
 
-        InitFrame(captureFrame_);
-        InitFrame(reverseFrame_);
-    }
+        config.noise_suppression.enabled = true;
+        config.noise_suppression.level =
+            webrtc::AudioProcessing::Config::NoiseSuppression::kHigh;
 
-    ~Impl() {
-        delete apm_;
-    }
+        // Keep gain control off to match prior behavior.
+        config.gain_controller1.enabled = false;
+        config.gain_controller2.enabled = false;
 
-    void InitFrame(webrtc::AudioFrame& frame) {
-        frame.sample_rate_hz_ = sampleRate_;
-        frame.num_channels_ = 1;
-        frame.samples_per_channel_ = frameSamples_;
-        std::memset(frame.data_, 0, sizeof(frame.data_));
+        apm_->ApplyConfig(config);
     }
 
     int sampleRate_;
     std::size_t frameSamples_;
+    webrtc::StreamConfig streamConfig_;
     int streamDelayMs_ = 0;
-    webrtc::AudioProcessing* apm_ = nullptr;
-    webrtc::AudioFrame captureFrame_{};
-    webrtc::AudioFrame reverseFrame_{};
+    rtc::scoped_refptr<webrtc::AudioProcessing> apm_;
 };
 
 EchoCanceller::EchoCanceller(int sampleRate)
@@ -60,8 +55,11 @@ void EchoCanceller::PushReverseFrame(const std::int16_t* samples, std::size_t sa
     if (sampleCount != frameSamples_) {
         throw std::runtime_error("EchoCanceller::PushReverseFrame requires exactly 10 ms frames.");
     }
-    std::memcpy(impl_->reverseFrame_.data_, samples, sizeof(std::int16_t) * sampleCount);
-    if (impl_->apm_->ProcessReverseStream(&impl_->reverseFrame_) != 0) {
+    // ProcessReverseStream may write back to the buffer; use a scratch output
+    // so the caller's buffer stays untouched.
+    std::vector<std::int16_t> scratch(sampleCount);
+    if (impl_->apm_->ProcessReverseStream(samples, impl_->streamConfig_,
+                                          impl_->streamConfig_, scratch.data()) != 0) {
         throw std::runtime_error("WebRTC reverse stream processing failed.");
     }
 }
@@ -70,13 +68,11 @@ void EchoCanceller::ProcessCaptureFrame(std::int16_t* samples, std::size_t sampl
     if (sampleCount != frameSamples_) {
         throw std::runtime_error("EchoCanceller::ProcessCaptureFrame requires exactly 10 ms frames.");
     }
-    std::memcpy(impl_->captureFrame_.data_, samples, sizeof(std::int16_t) * sampleCount);
-    // WebRTC APM requires set_stream_delay_ms before every ProcessStream call.
     impl_->apm_->set_stream_delay_ms(impl_->streamDelayMs_);
-    if (impl_->apm_->ProcessStream(&impl_->captureFrame_) != 0) {
+    if (impl_->apm_->ProcessStream(samples, impl_->streamConfig_,
+                                   impl_->streamConfig_, samples) != 0) {
         throw std::runtime_error("WebRTC capture stream processing failed.");
     }
-    std::memcpy(samples, impl_->captureFrame_.data_, sizeof(std::int16_t) * sampleCount);
 }
 
 void EchoCanceller::SetStreamDelayMs(int delayMs) {
@@ -84,10 +80,12 @@ void EchoCanceller::SetStreamDelayMs(int delayMs) {
 }
 
 void EchoCanceller::ClearReverseHistory() {
-    std::memset(impl_->reverseFrame_.data_, 0, sizeof(impl_->reverseFrame_.data_));
-    // Push several silent reverse frames to flush the AEC reference history.
+    // Push several silent reverse frames to flush AEC3 reference history.
+    std::vector<std::int16_t> silence(impl_->frameSamples_, 0);
+    std::vector<std::int16_t> scratch(impl_->frameSamples_, 0);
     for (int i = 0; i < 5; ++i) {
-        impl_->apm_->ProcessReverseStream(&impl_->reverseFrame_);
+        impl_->apm_->ProcessReverseStream(silence.data(), impl_->streamConfig_,
+                                          impl_->streamConfig_, scratch.data());
     }
 }
 

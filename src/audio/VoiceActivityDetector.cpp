@@ -12,16 +12,13 @@ namespace {
 
 constexpr float kMinRms = 250.0f;
 constexpr float kNoiseFloorMultiplier = 3.0f;
-// While the speaker is actively playing, AEC residue may still trigger libfvad.
-// We dynamically lift the threshold above whatever residual energy is currently
-// leaking through. The cleaned mic must beat both:
-//   * a hard floor (kPlaybackMinRms),
-//   * a multiple of the smoothed noise floor (kPlaybackRmsMultiplier),
-//   * AND a multiple of the recent speaker output RMS (kSpeakerEchoMultiplier).
-constexpr float kPlaybackRmsMultiplier = 8.0f;
-constexpr float kPlaybackMinRms = 1500.0f;
-constexpr float kSpeakerEchoMultiplier = 2.0f;  // mic cleaned RMS must beat 2x speaker RMS
-constexpr int kPlaybackStartSpeechMultiplier = 3;  // need 3x normal consecutive frames
+// AEC3 cancels the speaker's echo well, so the playback-time gate is much
+// closer to the regular gate. We still apply a slightly stricter floor to
+// suppress occasional residue, but no longer require the user to overpower
+// the raw speaker output (that defeats barge-in).
+constexpr float kPlaybackRmsMultiplier = 4.0f;
+constexpr float kPlaybackMinRms = 600.0f;
+constexpr int kPlaybackStartSpeechMultiplier = 2;  // need 2x normal consecutive frames
 
 bool VadDebugEnabled() {
     static const bool enabled = []() {
@@ -86,22 +83,28 @@ VadFrameResult VoiceActivityDetector::ProcessCaptureFrame(const std::int16_t* sa
     }
     const bool inCooldown = playbackCooldownFrames_ > 0;
 
+    // Cooldown / playback suppression only matter BEFORE an utterance begins
+    // (to avoid false-positive starts triggered by AEC residue). Once we're
+    // already inside an utterance — typically a barge-in that cancelled the
+    // agent's TTS — keep tracking the user's speech to its natural end so the
+    // captured audio is complete and a new turn can be transcribed.
+    const bool suppressForEcho = (playbackActive_ || inCooldown) && !inUtterance_;
+
     // While the speaker is playing or in cooldown, do not update the noise floor
     // (it would absorb echo) and use a stricter threshold so AEC residue does
     // not trigger false barge-ins.
     const bool suppressNoiseUpdate = playbackActive_ || inCooldown;
 
-    const bool rawVadPositive = fvadSays && !inCooldown;
+    const bool rawVadPositive = fvadSays && !(inCooldown && !inUtterance_);
     if (!rawVadPositive && !suppressNoiseUpdate) {
         noiseFloorRms_ = 0.98f * noiseFloorRms_ + 0.02f * result.rms;
     }
     float threshold = std::max(kMinRms, noiseFloorRms_ * kNoiseFloorMultiplier);
-    if (playbackActive_ || inCooldown) {
+    if (suppressForEcho) {
         threshold = std::max({threshold,
                               kPlaybackMinRms,
-                              noiseFloorRms_ * kPlaybackRmsMultiplier,
-                              speakerRmsEma_ * kSpeakerEchoMultiplier});
-    } else {
+                              noiseFloorRms_ * kPlaybackRmsMultiplier});
+    } else if (!playbackActive_ && !inCooldown) {
         // Decay the speaker RMS estimate when not playing.
         speakerRmsEma_ *= 0.9f;
     }

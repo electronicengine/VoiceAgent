@@ -38,27 +38,37 @@ endif()
 find_package(ALSA REQUIRED)
 find_package(Threads REQUIRED)
 
-find_path(WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR
-    NAMES webrtc/modules/audio_processing/include/audio_processing.h
-    PATHS
-        /usr/include/webrtc_audio_processing
-        /usr/local/include/webrtc_audio_processing
-        /usr/include
-        /usr/local/include
-)
-find_library(WEBRTC_AUDIO_PROCESSING_LIBRARY
-    NAMES webrtc_audio_processing
-    PATHS
-        /usr/lib
-        /usr/local/lib
-        /usr/lib/x86_64-linux-gnu
-        /usr/lib/aarch64-linux-gnu
-)
+# webrtc-audio-processing v2 (provides AEC3). Built from source under
+# third_party/webrtc-apm via meson; see README/build instructions.
+# Locate via pkg-config; users may also override WEBRTC_APM_PREFIX.
+set(WEBRTC_APM_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/third_party/webrtc-apm"
+    CACHE PATH "Install prefix of webrtc-audio-processing v2")
 
-if(NOT WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR OR NOT WEBRTC_AUDIO_PROCESSING_LIBRARY)
+find_package(PkgConfig REQUIRED)
+set(_webrtc_apm_pc_dirs
+    "${WEBRTC_APM_PREFIX}/lib/pkgconfig"
+    "${WEBRTC_APM_PREFIX}/lib/aarch64-linux-gnu/pkgconfig"
+    "${WEBRTC_APM_PREFIX}/lib/x86_64-linux-gnu/pkgconfig"
+)
+foreach(_dir IN LISTS _webrtc_apm_pc_dirs)
+    if(EXISTS "${_dir}")
+        if(DEFINED ENV{PKG_CONFIG_PATH} AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+            set(ENV{PKG_CONFIG_PATH} "${_dir}:$ENV{PKG_CONFIG_PATH}")
+        else()
+            set(ENV{PKG_CONFIG_PATH} "${_dir}")
+        endif()
+    endif()
+endforeach()
+
+pkg_check_modules(WEBRTC_APM IMPORTED_TARGET webrtc-audio-processing-2)
+if(NOT WEBRTC_APM_FOUND)
     message(FATAL_ERROR
-        "WebRTC AudioProcessing development files are required for the voice activity detector. "
-        "Install the headers and libwebrtc_audio_processing before configuring this project."
+        "webrtc-audio-processing-2 (with AEC3) was not found. "
+        "Build it from source and install to ${WEBRTC_APM_PREFIX}, e.g.:\n"
+        "  git clone https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing.git\n"
+        "  cd webrtc-audio-processing\n"
+        "  meson setup build --prefix=${WEBRTC_APM_PREFIX} --buildtype=release --default-library=static\n"
+        "  ninja -C build && ninja -C build install"
     )
 endif()
 
@@ -87,16 +97,24 @@ add_executable(cpp_voice_agent
     src/transcriber/DeepgramTranscriber.cpp
 )
 
-target_include_directories(cpp_voice_agent PRIVATE src ${WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR})
+target_include_directories(cpp_voice_agent PRIVATE src)
 
-target_compile_definitions(cpp_voice_agent PRIVATE WEBRTC_AUDIO_PROCESSING_ONLY_BUILD WEBRTC_POSIX)
+target_compile_definitions(cpp_voice_agent PRIVATE WEBRTC_POSIX)
 
 target_link_libraries(cpp_voice_agent
     PRIVATE
         ALSA::ALSA
         CURL::libcurl
         nlohmann_json::nlohmann_json
-        ${WEBRTC_AUDIO_PROCESSING_LIBRARY}
+        PkgConfig::WEBRTC_APM
         fvad
         Threads::Threads
 )
+
+# libfvad is built from a sibling fork of WebRTC's signal_processing code and
+# exports the same WebRtcSpl_* symbols as webrtc-audio-processing-2. The two
+# implementations are functionally equivalent, so allow the linker to keep the
+# first occurrence and discard duplicates.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(cpp_voice_agent PRIVATE "LINKER:--allow-multiple-definition")
+endif()

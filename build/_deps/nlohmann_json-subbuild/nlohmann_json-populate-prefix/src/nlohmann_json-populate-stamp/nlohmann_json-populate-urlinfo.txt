@@ -3,9 +3,9 @@
 # No other meaning or use of this file is supported.
 
 method=url
-command=/usr/bin/cmake;-P;/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/download-nlohmann_json-populate.cmake;COMMAND;/usr/bin/cmake;-P;/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/verify-nlohmann_json-populate.cmake;COMMAND;/usr/bin/cmake;-P;/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/extract-nlohmann_json-populate.cmake
-source_dir=/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-src
-work_dir=/home/ybulb/workspace/VoiceAgent/build/_deps
+command=/usr/bin/cmake;-P;/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/download-nlohmann_json-populate.cmake;COMMAND;/usr/bin/cmake;-P;/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/verify-nlohmann_json-populate.cmake;COMMAND;/usr/bin/cmake;-P;/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/extract-nlohmann_json-populate.cmake
+source_dir=/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-src
+work_dir=/home/kufi/workspace/voiceAgent/build/_deps
 url(s)=https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
 hash=
 no_extract=

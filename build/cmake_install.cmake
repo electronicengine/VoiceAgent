@@ -1,4 +1,4 @@
-# Install script for directory: /home/ybulb/workspace/VoiceAgent
+# Install script for directory: /home/kufi/workspace/voiceAgent
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,12 +44,12 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/ybulb/workspace/VoiceAgent/build/_deps/nlohmann_json-build/cmake_install.cmake")
+  include("/home/kufi/workspace/voiceAgent/build/_deps/nlohmann_json-build/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/ybulb/workspace/VoiceAgent/build/_deps/libfvad-build/cmake_install.cmake")
+  include("/home/kufi/workspace/voiceAgent/build/_deps/libfvad-build/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -60,5 +60,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/ybulb/workspace/VoiceAgent/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/kufi/workspace/voiceAgent/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
