@@ -1,12 +1,11 @@
 #pragma once
 
-#include "audio/IMicrophone.h"
+#include "common/CancellationToken.h"
 #include "common/HttpClient.h"
 #include "config/AppConfig.h"
 
 #include <nlohmann/json.hpp>
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,10 +14,14 @@ namespace voice_agent {
 class ITranscriber {
 public:
     virtual ~ITranscriber() = default;
-    virtual std::string ListenOnce() const;
+
+    // Transcribe a WAV blob (mono S16LE @ Config().speechSampleRate).
+    // Honors `token` if provided. Returns empty string if cancelled or no match.
+    std::string Transcribe(const std::vector<char>& wavBytes,
+                           const CancellationToken* token = nullptr) const;
 
 protected:
-    ITranscriber(const AppConfig& config, std::unique_ptr<IMicrophone> microphone);
+    explicit ITranscriber(const AppConfig& config);
 
     const AppConfig& Config() const;
 
@@ -27,10 +30,7 @@ protected:
     virtual std::string ProviderName() const = 0;
 
 private:
-    std::string RecognizeFromAudio(const std::vector<char>& audioData) const;
-
     AppConfig config_;
-    std::unique_ptr<IMicrophone> microphone_;
     HttpClient httpClient_;
 };
 

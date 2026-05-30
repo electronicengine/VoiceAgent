@@ -178,14 +178,19 @@ void OpenAiInterpreter::ResetSession(std::string systemPrompt) {
 
 InterpreterResponse OpenAiInterpreter::Interpret(
     const InterpreterInput& input,
-    const InterpreterStreamCallback& onPartialResponse) {
+    const InterpreterStreamCallback& onPartialResponse,
+    const CancellationToken* token) {
     if (assistantId_.empty() || threadId_.empty()) {
         throw std::runtime_error("OpenAI session is not initialized.");
     }
 
     AddUserMessageToThread(input);
     StreamParseState state;
+    state.cancellationToken = token;
     CreateRun(state, onPartialResponse);
+    if (token != nullptr && token->IsCancelled()) {
+        return InterpreterResponse{};
+    }
     if (!state.sseBuffer.empty()) {
         ConsumeStreamingChunk("\n\n", state, onPartialResponse);
     }
@@ -202,6 +207,10 @@ InterpreterResponse OpenAiInterpreter::Interpret(
         state.inlineJsonEscape = false;
     }
     EmitCompletedSpeech(state.pendingSpeech, true, onPartialResponse);
+
+    if (token != nullptr && token->IsCancelled()) {
+        return InterpreterResponse{};
+    }
 
     const InterpreterResponse finalResponse = BuildStructuredResponse(state.rawResponse);
     if (finalResponse.Empty()) {
@@ -365,6 +374,7 @@ void OpenAiInterpreter::CreateRun(
     request.url = config_.openAiBaseUrl + "/threads/" + threadId_ + "/runs";
     request.headers = DefaultHeaders();
     request.body = requestBody.dump();
+    request.cancellationToken = state.cancellationToken;
 
     const HttpResponse response = httpClient_.PostStream(
         request,
@@ -372,6 +382,9 @@ void OpenAiInterpreter::CreateRun(
             ConsumeStreamingChunk(chunk, state, onPartialResponse);
         }
     );
+    if (response.cancelled) {
+        return;
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
         throw std::runtime_error(
             "OpenAI run creation failed with HTTP " +

@@ -17,7 +17,8 @@ public:
     void ResetSession(std::string systemPrompt) override;
     InterpreterResponse Interpret(
         const InterpreterInput& input,
-        const InterpreterStreamCallback& onPartialResponse) override;
+        const InterpreterStreamCallback& onPartialResponse,
+        const CancellationToken* token = nullptr) override;
 
 private:
     struct StreamParseState {
@@ -33,6 +34,7 @@ private:
         int inlineJsonDepth = 0;
         bool inlineJsonInString = false;
         bool inlineJsonEscape = false;
+        const CancellationToken* cancellationToken = nullptr;
     };
 
     std::vector<std::string> DefaultHeaders() const;

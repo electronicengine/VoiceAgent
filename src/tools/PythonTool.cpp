@@ -237,7 +237,7 @@ const ToolDefinition& PythonTool::Definition() const {
     return definition_;
 }
 
-ToolResult PythonTool::Execute(const ToolCall& call) const {
+ToolResult PythonTool::Execute(const ToolCall& call, const CancellationToken* /*token*/) const {
     const std::string basePythonExecutable = Trim(call.arguments.value("pythonExecutable", "python3"));
     const std::string code = call.arguments.contains("code") && call.arguments.at("code").is_string()
         ? call.arguments.at("code").get<std::string>()

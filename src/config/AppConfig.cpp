@@ -368,6 +368,18 @@ AppConfig LoadConfig() {
         "vadAmplitudeThreshold",
         900
     );
+    config.vadPlaybackCooldownMs = ReadPositiveIntField(
+        transcriberJson,
+        configJson,
+        "vadPlaybackCooldownMs",
+        200
+    );
+    config.aecStreamDelayMs = ReadPositiveIntField(
+        transcriberJson,
+        configJson,
+        "aecStreamDelayMs",
+        40
+    );
     config.maxAgentSteps = ReadPositiveIntField(commonJson, configJson, "maxAgentSteps", 3);
     config.openAiRunPollIntervalMs = ReadPositiveIntField(
         interpreterOpenAiJson,

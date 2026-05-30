@@ -32,6 +32,8 @@ struct AppConfig {
     int vadMaxCaptureMs = 25000;
     int vadPreRollMs = 200;
     int vadAmplitudeThreshold = 900;
+    int vadPlaybackCooldownMs = 200;
+    int aecStreamDelayMs = 40;
     int maxAgentSteps = 3;
     int openAiRunPollIntervalMs = 500;
     int openAiRunPollTimeoutSeconds = 90;

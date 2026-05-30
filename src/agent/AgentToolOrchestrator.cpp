@@ -31,14 +31,21 @@ AgentToolOrchestrator::AgentToolOrchestrator(
 
 AgentTurnResult AgentToolOrchestrator::RunTurn(
     const std::string& userText,
-    const InterpreterStreamCallback& onPartialResponse) const {
+    const InterpreterStreamCallback& onPartialResponse,
+    const CancellationToken* token) const {
     InterpreterInput currentInput;
     currentInput.text = userText;
     AgentTurnResult result;
 
     for (int step = 0; step < maxAgentSteps_; ++step) {
+        if (token != nullptr && token->IsCancelled()) {
+            return result;
+        }
         std::cout << "Agent step " << (step + 1) << " of " << maxAgentSteps_ << "\n";
-        const InterpreterResponse response = interpreter_.Interpret(currentInput, onPartialResponse);
+        const InterpreterResponse response = interpreter_.Interpret(currentInput, onPartialResponse, token);
+        if (token != nullptr && token->IsCancelled()) {
+            return result;
+        }
         if (response.Empty()) {
             throw std::runtime_error("Interpreter returned an empty response.");
         }
@@ -62,7 +69,7 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
                 {{"reason", "unknown_tool"}, {"tool", call.name}}
             };
         } else {
-            toolResult = tool->Execute(call);
+            toolResult = tool->Execute(call, token);
         }
         std::cout << "Tool execution result: " << toolResult.summary << "\n\n";
 

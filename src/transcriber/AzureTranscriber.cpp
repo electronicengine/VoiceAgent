@@ -1,6 +1,5 @@
 #include "transcriber/AzureTranscriber.h"
 
-#include "audio/AlsaMicrophone.h"
 #include "common/StringUtils.h"
 #include <nlohmann/json.hpp>
 
@@ -13,12 +12,7 @@ namespace voice_agent {
     using json = nlohmann::json;
 
     AzureTranscriber::AzureTranscriber(const AppConfig& config)
-        : AzureTranscriber(
-            config,
-            std::make_unique<AlsaMicrophone>(config)) {}
-
-    AzureTranscriber::AzureTranscriber(const AppConfig& config, std::unique_ptr<IMicrophone> microphone)
-        : ITranscriber(config, std::move(microphone)) {}
+        : ITranscriber(config) {}
 
     HttpRequest AzureTranscriber::BuildRequest(const std::vector<char>& audioData) const {
         const AppConfig& config = Config();

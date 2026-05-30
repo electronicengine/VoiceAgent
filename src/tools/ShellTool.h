@@ -9,7 +9,8 @@ public:
     ShellTool();
 
     const ToolDefinition& Definition() const override;
-    ToolResult Execute(const ToolCall& call) const override;
+    ToolResult Execute(const ToolCall& call,
+                       const CancellationToken* token = nullptr) const override;
 
 private:
     ToolDefinition definition_;

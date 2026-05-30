@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/CancellationToken.h"
 #include "config/AppConfig.h"
 #include "interpreter/IInterpreter.h"
 #include "tools/ITool.h"
@@ -14,7 +15,8 @@ public:
 
     AgentTurnResult RunTurn(
         const std::string& userText,
-        const InterpreterStreamCallback& onPartialResponse) const;
+        const InterpreterStreamCallback& onPartialResponse,
+        const CancellationToken* token = nullptr) const;
 
 private:
     ToolCall ParseToolCall(const InterpreterResponse& response) const;

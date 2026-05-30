@@ -153,24 +153,10 @@ CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaMicrophone.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaMicrophone.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/AlsaMicrophone.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaMicrophone.cpp.s
 
-CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
-CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o: /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp
-CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp
-
-CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp > CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.i
-
-CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s
-
 CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o: /home/ybulb/workspace/VoiceAgent/src/audio/AlsaSpeaker.cpp
 CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/audio/AlsaSpeaker.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.i: cmake_force
@@ -181,10 +167,66 @@ CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/AlsaSpeaker.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.s
 
+CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
+CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o: /home/ybulb/workspace/VoiceAgent/src/audio/EchoCanceller.cpp
+CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/audio/EchoCanceller.cpp
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ybulb/workspace/VoiceAgent/src/audio/EchoCanceller.cpp > CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.i
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/EchoCanceller.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.s
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
+CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o: /home/ybulb/workspace/VoiceAgent/src/audio/VadDetector.cpp
+CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/audio/VadDetector.cpp
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ybulb/workspace/VoiceAgent/src/audio/VadDetector.cpp > CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.i
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/VadDetector.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.s
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o: /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp > CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.i
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/VoiceActivityDetector.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o: /home/ybulb/workspace/VoiceAgent/src/audio/VoiceController.cpp
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/audio/VoiceController.cpp
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ybulb/workspace/VoiceAgent/src/audio/VoiceController.cpp > CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.i
+
+CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ybulb/workspace/VoiceAgent/src/audio/VoiceController.cpp -o CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.s
+
 CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o: /home/ybulb/workspace/VoiceAgent/src/common/HttpClient.cpp
 CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/common/HttpClient.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.i: cmake_force
@@ -198,7 +240,7 @@ CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o: /home/ybulb/workspace/VoiceAgent/src/common/StringUtils.cpp
 CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/common/StringUtils.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.i: cmake_force
@@ -212,7 +254,7 @@ CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o: /home/ybulb/workspace/VoiceAgent/src/config/AppConfig.cpp
 CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/config/AppConfig.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.i: cmake_force
@@ -226,7 +268,7 @@ CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o: /home/ybulb/workspace/VoiceAgent/src/interpreter/OpenAiInterpreter.cpp
 CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/interpreter/OpenAiInterpreter.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.i: cmake_force
@@ -240,7 +282,7 @@ CMakeFiles/cpp_voice_agent.dir/src/interpreter/OpenAiInterpreter.cpp.s: cmake_fo
 CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o: /home/ybulb/workspace/VoiceAgent/src/synthesizer/AzureRestSynthesizer.cpp
 CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/synthesizer/AzureRestSynthesizer.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.i: cmake_force
@@ -254,7 +296,7 @@ CMakeFiles/cpp_voice_agent.dir/src/synthesizer/AzureRestSynthesizer.cpp.s: cmake
 CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o: /home/ybulb/workspace/VoiceAgent/src/tools/PythonTool.cpp
 CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/tools/PythonTool.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.i: cmake_force
@@ -268,7 +310,7 @@ CMakeFiles/cpp_voice_agent.dir/src/tools/PythonTool.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o: /home/ybulb/workspace/VoiceAgent/src/tools/ShellTool.cpp
 CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/tools/ShellTool.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.i: cmake_force
@@ -282,7 +324,7 @@ CMakeFiles/cpp_voice_agent.dir/src/tools/ShellTool.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o: /home/ybulb/workspace/VoiceAgent/src/tools/WebBrowserTool.cpp
 CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/tools/WebBrowserTool.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.i: cmake_force
@@ -296,7 +338,7 @@ CMakeFiles/cpp_voice_agent.dir/src/tools/WebBrowserTool.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o: /home/ybulb/workspace/VoiceAgent/src/transcriber/ITranscriber.cpp
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/transcriber/ITranscriber.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.i: cmake_force
@@ -310,7 +352,7 @@ CMakeFiles/cpp_voice_agent.dir/src/transcriber/ITranscriber.cpp.s: cmake_force
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o: /home/ybulb/workspace/VoiceAgent/src/transcriber/AzureTranscriber.cpp
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/transcriber/AzureTranscriber.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.i: cmake_force
@@ -324,7 +366,7 @@ CMakeFiles/cpp_voice_agent.dir/src/transcriber/AzureTranscriber.cpp.s: cmake_for
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o: CMakeFiles/cpp_voice_agent.dir/flags.make
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o: /home/ybulb/workspace/VoiceAgent/src/transcriber/DeepgramTranscriber.cpp
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o: CMakeFiles/cpp_voice_agent.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o -MF CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o.d -o CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.o -c /home/ybulb/workspace/VoiceAgent/src/transcriber/DeepgramTranscriber.cpp
 
 CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscriber.cpp.i: cmake_force
@@ -343,8 +385,11 @@ cpp_voice_agent_OBJECTS = \
 "CMakeFiles/cpp_voice_agent.dir/src/agent/TextAgent.cpp.o" \
 "CMakeFiles/cpp_voice_agent.dir/src/agent/VoiceAgent.cpp.o" \
 "CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaMicrophone.cpp.o" \
-"CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o" \
 "CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o" \
+"CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o" \
+"CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o" \
+"CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o" \
+"CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o" \
 "CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o" \
 "CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o" \
 "CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o" \
@@ -366,8 +411,11 @@ cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/agent/AgentToolOrchestrator.
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/agent/TextAgent.cpp.o
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/agent/VoiceAgent.cpp.o
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaMicrophone.cpp.o
-cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.o
+cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o
+cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o
+cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.o
+cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/common/HttpClient.cpp.o
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/common/StringUtils.cpp.o
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/config/AppConfig.cpp.o
@@ -382,8 +430,10 @@ cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/src/transcriber/DeepgramTranscri
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/build.make
 cpp_voice_agent: /usr/lib/x86_64-linux-gnu/libasound.so
 cpp_voice_agent: /usr/lib/x86_64-linux-gnu/libcurl.so
+cpp_voice_agent: /usr/lib/x86_64-linux-gnu/libwebrtc_audio_processing.so
+cpp_voice_agent: _deps/libfvad-build/src/libfvad.a
 cpp_voice_agent: CMakeFiles/cpp_voice_agent.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Linking CXX executable cpp_voice_agent"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/ybulb/workspace/VoiceAgent/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Linking CXX executable cpp_voice_agent"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/cpp_voice_agent.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

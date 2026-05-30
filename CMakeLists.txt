@@ -19,6 +19,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+FetchContent_Declare(
+    libfvad
+    GIT_REPOSITORY https://github.com/dpirch/libfvad.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(libfvad)
+
 find_package(CURL QUIET)
 if(NOT CURL_FOUND)
     message(FATAL_ERROR
@@ -28,6 +36,7 @@ if(NOT CURL_FOUND)
 endif()
 
 find_package(ALSA REQUIRED)
+find_package(Threads REQUIRED)
 
 find_path(WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR
     NAMES webrtc/modules/audio_processing/include/audio_processing.h
@@ -45,32 +54,11 @@ find_library(WEBRTC_AUDIO_PROCESSING_LIBRARY
         /usr/lib/x86_64-linux-gnu
         /usr/lib/aarch64-linux-gnu
 )
-find_path(FVAD_INCLUDE_DIR
-    NAMES fvad.h
-    PATHS
-        /usr/include
-        /usr/local/include
-)
-find_library(FVAD_LIBRARY
-    NAMES fvad
-    PATHS
-        /usr/lib
-        /usr/local/lib
-        /usr/lib/x86_64-linux-gnu
-        /usr/lib/aarch64-linux-gnu
-)
 
 if(NOT WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR OR NOT WEBRTC_AUDIO_PROCESSING_LIBRARY)
     message(FATAL_ERROR
         "WebRTC AudioProcessing development files are required for the voice activity detector. "
         "Install the headers and libwebrtc_audio_processing before configuring this project."
-    )
-endif()
-
-if(NOT FVAD_INCLUDE_DIR OR NOT FVAD_LIBRARY)
-    message(FATAL_ERROR
-        "libfvad development files are required for the voice activity detector. "
-        "Install fvad headers and library before configuring this project."
     )
 endif()
 
@@ -81,8 +69,11 @@ add_executable(cpp_voice_agent
     src/agent/TextAgent.cpp
     src/agent/VoiceAgent.cpp
     src/audio/AlsaMicrophone.cpp
-    src/audio/VoiceActivityDetector.cpp
     src/audio/AlsaSpeaker.cpp
+    src/audio/EchoCanceller.cpp
+    src/audio/VadDetector.cpp
+    src/audio/VoiceActivityDetector.cpp
+    src/audio/VoiceController.cpp
     src/common/HttpClient.cpp
     src/common/StringUtils.cpp
     src/config/AppConfig.cpp
@@ -96,15 +87,16 @@ add_executable(cpp_voice_agent
     src/transcriber/DeepgramTranscriber.cpp
 )
 
-target_include_directories(cpp_voice_agent PRIVATE src ${WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR} ${FVAD_INCLUDE_DIR})
+target_include_directories(cpp_voice_agent PRIVATE src ${WEBRTC_AUDIO_PROCESSING_INCLUDE_DIR})
 
 target_compile_definitions(cpp_voice_agent PRIVATE WEBRTC_AUDIO_PROCESSING_ONLY_BUILD WEBRTC_POSIX)
 
 target_link_libraries(cpp_voice_agent
     PRIVATE
-    ALSA::ALSA
+        ALSA::ALSA
         CURL::libcurl
         nlohmann_json::nlohmann_json
-    ${WEBRTC_AUDIO_PROCESSING_LIBRARY}
-    ${FVAD_LIBRARY}
+        ${WEBRTC_AUDIO_PROCESSING_LIBRARY}
+        fvad
+        Threads::Threads
 )

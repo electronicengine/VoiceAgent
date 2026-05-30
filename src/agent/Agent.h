@@ -1,6 +1,7 @@
 #pragma once
 
 #include "agent/AgentToolOrchestrator.h"
+#include "common/CancellationToken.h"
 #include "interpreter/IInterpreter.h"
 
 #include <memory>
@@ -23,7 +24,8 @@ public:
 protected:
     AgentTurnResult RunTurn(
         const std::string& userText,
-        const InterpreterStreamCallback& onPartialResponse) const;
+        const InterpreterStreamCallback& onPartialResponse,
+        const CancellationToken* token = nullptr) const;
 
 private:
     std::unique_ptr<IInterpreter> interpreter_;

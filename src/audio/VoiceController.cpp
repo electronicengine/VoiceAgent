@@ -1,0 +1,191 @@
+#include "audio/VoiceController.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <utility>
+
+namespace voice_agent {
+
+namespace {
+
+void AppendLE16(std::vector<char>& out, std::uint16_t v) {
+    out.push_back(static_cast<char>(v & 0xFF));
+    out.push_back(static_cast<char>((v >> 8) & 0xFF));
+}
+void AppendLE32(std::vector<char>& out, std::uint32_t v) {
+    out.push_back(static_cast<char>(v & 0xFF));
+    out.push_back(static_cast<char>((v >> 8) & 0xFF));
+    out.push_back(static_cast<char>((v >> 16) & 0xFF));
+    out.push_back(static_cast<char>((v >> 24) & 0xFF));
+}
+
+std::vector<char> BuildWav(const std::vector<std::int16_t>& pcm, int sampleRate) {
+    constexpr std::uint16_t channels = 1;
+    constexpr std::uint16_t bps = 16;
+    constexpr std::uint16_t blockAlign = channels * (bps / 8);
+    const std::uint32_t dataSize = static_cast<std::uint32_t>(pcm.size() * sizeof(std::int16_t));
+    const std::uint32_t byteRate = static_cast<std::uint32_t>(sampleRate) * blockAlign;
+
+    std::vector<char> wav;
+    wav.reserve(44 + dataSize);
+    wav.insert(wav.end(), {'R', 'I', 'F', 'F'});
+    AppendLE32(wav, 36u + dataSize);
+    wav.insert(wav.end(), {'W', 'A', 'V', 'E', 'f', 'm', 't', ' '});
+    AppendLE32(wav, 16);
+    AppendLE16(wav, 1);
+    AppendLE16(wav, channels);
+    AppendLE32(wav, static_cast<std::uint32_t>(sampleRate));
+    AppendLE32(wav, byteRate);
+    AppendLE16(wav, blockAlign);
+    AppendLE16(wav, bps);
+    wav.insert(wav.end(), {'d', 'a', 't', 'a'});
+    AppendLE32(wav, dataSize);
+    const auto* bytes = reinterpret_cast<const char*>(pcm.data());
+    wav.insert(wav.end(), bytes, bytes + dataSize);
+    return wav;
+}
+
+}  // namespace
+
+VoiceController::VoiceController(std::unique_ptr<IMicrophone> microphone,
+                                 std::unique_ptr<ISpeaker> speaker,
+                                 const VadConfig& vadConfig)
+    : microphone_(std::move(microphone)),
+      speaker_(std::move(speaker)),
+      detector_(vadConfig) {}
+
+VoiceController::~VoiceController() {
+    Stop();
+}
+
+void VoiceController::Start() {
+    if (running_.exchange(true)) {
+        return;
+    }
+    speaker_->Start();
+    speaker_->SetFrameSink([this](const std::int16_t* s, std::size_t n) { OnSpeakerFrame(s, n); });
+    microphone_->Start([this](const std::int16_t* s, std::size_t n) { OnMicFrame(s, n); });
+}
+
+void VoiceController::Stop() {
+    if (!running_.exchange(false)) {
+        return;
+    }
+    microphone_->Stop();
+    speaker_->StopPlayback();
+    speaker_->Shutdown();
+}
+
+void VoiceController::SetOnUtterance(OnUtterance cb) {
+    std::lock_guard<std::mutex> lock(callbackMutex_);
+    onUtterance_ = std::move(cb);
+}
+
+void VoiceController::SetOnBargeIn(OnBargeIn cb) {
+    std::lock_guard<std::mutex> lock(callbackMutex_);
+    onBargeIn_ = std::move(cb);
+}
+
+void VoiceController::SetBusy(bool busy) {
+    busy_.store(busy);
+}
+
+void VoiceController::Speak(std::string pcm) {
+    speaker_->Enqueue(std::move(pcm));
+}
+
+void VoiceController::WaitUntilSpeakerIdle() {
+    speaker_->WaitUntilIdle();
+}
+
+void VoiceController::StopSpeaking() {
+    speaker_->StopPlayback();
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        detector_.BeginPlaybackCooldown();
+    }
+}
+
+void VoiceController::OnSpeakerFrame(const std::int16_t* samples, std::size_t sampleCount) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    detector_.PushReverseFrame(samples, sampleCount);
+}
+
+void VoiceController::OnMicFrame(const std::int16_t* samples, std::size_t sampleCount) {
+    VadFrameResult res;
+    std::vector<std::int16_t> cleaned;
+    bool startedNow = false;
+    bool endedNow = false;
+    bool speakerJustStopped = false;
+    std::vector<std::int16_t> preRoll;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        // Detect speaker stopping to start cooldown automatically.
+        const bool speakerActive = speaker_->IsActive();
+        detector_.SetPlaybackActive(speakerActive);
+        if (speakerWasActive_ && !speakerActive) {
+            detector_.BeginPlaybackCooldown();
+            speakerJustStopped = true;
+        }
+        speakerWasActive_ = speakerActive;
+
+        res = detector_.ProcessCaptureFrame(samples, sampleCount, cleaned);
+        if (res.event == VadEvent::SpeechStarted) {
+            startedNow = true;
+            preRoll = std::move(res.preRollPcm);
+            currentUtterance_.clear();
+            currentUtterance_.reserve(preRoll.size() + sampleCount * 200);
+            currentUtterance_.insert(currentUtterance_.end(), preRoll.begin(), preRoll.end());
+            currentUtterance_.insert(currentUtterance_.end(), cleaned.begin(), cleaned.end());
+        } else if (res.speechActive) {
+            currentUtterance_.insert(currentUtterance_.end(), cleaned.begin(), cleaned.end());
+        }
+        if (res.event == VadEvent::SpeechEnded) {
+            endedNow = true;
+        }
+    }
+
+    if (speakerJustStopped) {
+        // ok
+    }
+
+    if (startedNow) {
+        OnBargeIn cb;
+        {
+            std::lock_guard<std::mutex> lock(callbackMutex_);
+            cb = onBargeIn_;
+        }
+        if (cb && busy_.load()) {
+            cb();
+        }
+    }
+
+    if (endedNow) {
+        EmitUtterance();
+    }
+}
+
+void VoiceController::EmitUtterance() {
+    std::vector<std::int16_t> utterance;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        utterance.swap(currentUtterance_);
+        detector_.ResetUtterance();
+    }
+    if (utterance.empty()) {
+        return;
+    }
+    std::vector<char> wav = BuildWav(utterance, microphone_->SampleRate());
+    OnUtterance cb;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        cb = onUtterance_;
+    }
+    if (cb) {
+        cb(std::move(wav));
+    }
+}
+
+}  // namespace voice_agent

@@ -67,7 +67,7 @@ const ToolDefinition& ShellTool::Definition() const {
     return definition_;
 }
 
-ToolResult ShellTool::Execute(const ToolCall& call) const {
+ToolResult ShellTool::Execute(const ToolCall& call, const CancellationToken* /*token*/) const {
     std::string command = Trim(call.arguments.value("command", ""));
     if (command.empty()) {
         command = Trim(call.arguments.value("commmand", ""));

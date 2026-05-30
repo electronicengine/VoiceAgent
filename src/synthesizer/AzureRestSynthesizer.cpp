@@ -1,6 +1,5 @@
 #include "synthesizer/AzureRestSynthesizer.h"
 
-#include "audio/AlsaSpeaker.h"
 #include "common/StringUtils.h"
 
 #include <stdexcept>
@@ -9,24 +8,22 @@
 namespace voice_agent {
 
 AzureRestSynthesizer::AzureRestSynthesizer(const AppConfig& config)
-    : AzureRestSynthesizer(
-          config,
-          std::make_unique<AlsaSpeaker>(config.speechSampleRate, config.alsaPlaybackDevice)) {}
+    : config_(config) {}
 
-AzureRestSynthesizer::AzureRestSynthesizer(const AppConfig& config, std::unique_ptr<ISpeaker> speaker)
-    : config_(config),
-      speaker_(std::move(speaker)) {}
-
-void AzureRestSynthesizer::Synthesize(const InterpreterResponse& response) const {
+std::string AzureRestSynthesizer::Synthesize(const InterpreterResponse& response,
+                                             const CancellationToken* token) const {
     const std::string speakableText = response.SpeakableText();
     if (speakableText.empty()) {
-        return;
+        return {};
     }
-
-    speaker_->PlayPcm16KhzMono(RequestPcmAudio(speakableText));
+    if (token != nullptr && token->IsCancelled()) {
+        return {};
+    }
+    return RequestPcmAudio(speakableText, token);
 }
 
-std::string AzureRestSynthesizer::RequestPcmAudio(const std::string& text) const {
+std::string AzureRestSynthesizer::RequestPcmAudio(const std::string& text,
+                                                  const CancellationToken* token) const {
     const std::string ssml =
         "<speak version='1.0' xml:lang='" + config_.speechLanguage + "'>"
         "<voice xml:lang='" + config_.speechLanguage + "' name='" + config_.voiceName + "'>" +
@@ -41,8 +38,12 @@ std::string AzureRestSynthesizer::RequestPcmAudio(const std::string& text) const
         "User-Agent: cpp-voice-agent",
     };
     request.body = ssml;
+    request.cancellationToken = token;
 
     const HttpResponse response = httpClient_.Post(request);
+    if (response.cancelled) {
+        return {};
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
         throw std::runtime_error(
             "Azure TTS request returned HTTP " + std::to_string(response.statusCode) + ": " + response.body

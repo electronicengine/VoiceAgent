@@ -85,6 +85,51 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
+
 # The main all target
 all: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ybulb/workspace/VoiceAgent/build/CMakeFiles /home/ybulb/workspace/VoiceAgent/build//CMakeFiles/progress.marks
@@ -128,6 +173,19 @@ cpp_voice_agent: cmake_check_build_system
 cpp_voice_agent/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/build
 .PHONY : cpp_voice_agent/fast
+
+#=============================================================================
+# Target rules for targets named fvad
+
+# Build rule for target.
+fvad: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 fvad
+.PHONY : fvad
+
+# fast build rule for target.
+fvad/fast:
+	$(MAKE) $(MAKESILENT) -f _deps/libfvad-build/src/CMakeFiles/fvad.dir/build.make _deps/libfvad-build/src/CMakeFiles/fvad.dir/build
+.PHONY : fvad/fast
 
 src/agent/Agent.o: src/agent/Agent.cpp.o
 .PHONY : src/agent/Agent.o
@@ -273,6 +331,54 @@ src/audio/AlsaSpeaker.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/AlsaSpeaker.cpp.s
 .PHONY : src/audio/AlsaSpeaker.cpp.s
 
+src/audio/EchoCanceller.o: src/audio/EchoCanceller.cpp.o
+.PHONY : src/audio/EchoCanceller.o
+
+# target to build an object file
+src/audio/EchoCanceller.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.o
+.PHONY : src/audio/EchoCanceller.cpp.o
+
+src/audio/EchoCanceller.i: src/audio/EchoCanceller.cpp.i
+.PHONY : src/audio/EchoCanceller.i
+
+# target to preprocess a source file
+src/audio/EchoCanceller.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.i
+.PHONY : src/audio/EchoCanceller.cpp.i
+
+src/audio/EchoCanceller.s: src/audio/EchoCanceller.cpp.s
+.PHONY : src/audio/EchoCanceller.s
+
+# target to generate assembly for a file
+src/audio/EchoCanceller.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/EchoCanceller.cpp.s
+.PHONY : src/audio/EchoCanceller.cpp.s
+
+src/audio/VadDetector.o: src/audio/VadDetector.cpp.o
+.PHONY : src/audio/VadDetector.o
+
+# target to build an object file
+src/audio/VadDetector.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.o
+.PHONY : src/audio/VadDetector.cpp.o
+
+src/audio/VadDetector.i: src/audio/VadDetector.cpp.i
+.PHONY : src/audio/VadDetector.i
+
+# target to preprocess a source file
+src/audio/VadDetector.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.i
+.PHONY : src/audio/VadDetector.cpp.i
+
+src/audio/VadDetector.s: src/audio/VadDetector.cpp.s
+.PHONY : src/audio/VadDetector.s
+
+# target to generate assembly for a file
+src/audio/VadDetector.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VadDetector.cpp.s
+.PHONY : src/audio/VadDetector.cpp.s
+
 src/audio/VoiceActivityDetector.o: src/audio/VoiceActivityDetector.cpp.o
 .PHONY : src/audio/VoiceActivityDetector.o
 
@@ -296,6 +402,30 @@ src/audio/VoiceActivityDetector.s: src/audio/VoiceActivityDetector.cpp.s
 src/audio/VoiceActivityDetector.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceActivityDetector.cpp.s
 .PHONY : src/audio/VoiceActivityDetector.cpp.s
+
+src/audio/VoiceController.o: src/audio/VoiceController.cpp.o
+.PHONY : src/audio/VoiceController.o
+
+# target to build an object file
+src/audio/VoiceController.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.o
+.PHONY : src/audio/VoiceController.cpp.o
+
+src/audio/VoiceController.i: src/audio/VoiceController.cpp.i
+.PHONY : src/audio/VoiceController.i
+
+# target to preprocess a source file
+src/audio/VoiceController.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.i
+.PHONY : src/audio/VoiceController.cpp.i
+
+src/audio/VoiceController.s: src/audio/VoiceController.cpp.s
+.PHONY : src/audio/VoiceController.s
+
+# target to generate assembly for a file
+src/audio/VoiceController.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpp_voice_agent.dir/build.make CMakeFiles/cpp_voice_agent.dir/src/audio/VoiceController.cpp.s
+.PHONY : src/audio/VoiceController.cpp.s
 
 src/common/HttpClient.o: src/common/HttpClient.cpp.o
 .PHONY : src/common/HttpClient.o
@@ -592,8 +722,13 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... cpp_voice_agent"
+	@echo "... fvad"
 	@echo "... src/agent/Agent.o"
 	@echo "... src/agent/Agent.i"
 	@echo "... src/agent/Agent.s"
@@ -612,9 +747,18 @@ help:
 	@echo "... src/audio/AlsaSpeaker.o"
 	@echo "... src/audio/AlsaSpeaker.i"
 	@echo "... src/audio/AlsaSpeaker.s"
+	@echo "... src/audio/EchoCanceller.o"
+	@echo "... src/audio/EchoCanceller.i"
+	@echo "... src/audio/EchoCanceller.s"
+	@echo "... src/audio/VadDetector.o"
+	@echo "... src/audio/VadDetector.i"
+	@echo "... src/audio/VadDetector.s"
 	@echo "... src/audio/VoiceActivityDetector.o"
 	@echo "... src/audio/VoiceActivityDetector.i"
 	@echo "... src/audio/VoiceActivityDetector.s"
+	@echo "... src/audio/VoiceController.o"
+	@echo "... src/audio/VoiceController.i"
+	@echo "... src/audio/VoiceController.s"
 	@echo "... src/common/HttpClient.o"
 	@echo "... src/common/HttpClient.i"
 	@echo "... src/common/HttpClient.s"

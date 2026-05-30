@@ -15,8 +15,9 @@ Agent::Agent(
 
 AgentTurnResult Agent::RunTurn(
     const std::string& userText,
-    const InterpreterStreamCallback& onPartialResponse) const {
-    return agentOrchestrator_.RunTurn(userText, onPartialResponse);
+    const InterpreterStreamCallback& onPartialResponse,
+    const CancellationToken* token) const {
+    return agentOrchestrator_.RunTurn(userText, onPartialResponse, token);
 }
 
 }  // namespace voice_agent

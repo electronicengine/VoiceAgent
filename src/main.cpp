@@ -18,6 +18,10 @@
 #include "transcriber/DeepgramTranscriber.h"
 #include "transcriber/AzureTranscriber.h"
 #include "agent/VoiceAgent.h"
+#include "audio/AlsaMicrophone.h"
+#include "audio/AlsaSpeaker.h"
+#include "audio/VoiceController.h"
+#include "audio/VoiceActivityDetector.h"
 
 #include <vector>
 
@@ -81,10 +85,26 @@ int main() {
         } else {
             auto transcriber = std::make_unique<voice_agent::AzureTranscriber>(config);
             auto synthesizer = std::make_unique<voice_agent::AzureRestSynthesizer>(config);
+
+            voice_agent::VadConfig vadConfig;
+            vadConfig.sampleRate = config.speechSampleRate;
+            vadConfig.startSpeechMs = config.vadStartSpeechMs;
+            vadConfig.endSilenceMs = config.vadEndSilenceMs;
+            vadConfig.preRollMs = config.vadPreRollMs;
+            vadConfig.playbackCooldownMs = config.vadPlaybackCooldownMs;
+            vadConfig.aecStreamDelayMs = config.aecStreamDelayMs;
+
+            auto microphone = std::make_unique<voice_agent::AlsaMicrophone>(config);
+            auto speaker = std::make_unique<voice_agent::AlsaSpeaker>(
+                config.speechSampleRate, config.alsaPlaybackDevice);
+            auto voiceController = std::make_unique<voice_agent::VoiceController>(
+                std::move(microphone), std::move(speaker), vadConfig);
+
             agent = std::make_unique<voice_agent::VoiceAgent>(
                 std::move(transcriber),
                 std::move(interpreter),
                 std::move(synthesizer),
+                std::move(voiceController),
                 systemPrompt,
                 std::move(agentOrchestrator)
             );

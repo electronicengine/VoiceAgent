@@ -3,27 +3,32 @@
 #include "audio/IMicrophone.h"
 #include "config/AppConfig.h"
 
+#include <atomic>
 #include <string>
-#include <vector>
+#include <thread>
 
 namespace voice_agent {
 
 class AlsaMicrophone final : public IMicrophone {
 public:
     explicit AlsaMicrophone(const AppConfig& config);
-    std::vector<char> CaptureWavBytes() const override;
+    ~AlsaMicrophone() override;
+
+    AlsaMicrophone(const AlsaMicrophone&) = delete;
+    AlsaMicrophone& operator=(const AlsaMicrophone&) = delete;
+
+    void Start(FrameCallback callback) override;
+    void Stop() override;
+    int SampleRate() const override { return sampleRate_; }
 
 private:
+    void CaptureLoop();
+
     int sampleRate_;
-    int captureDurationSeconds_;
-    bool vadEnabled_;
-    int vadFrameMs_;
-    int vadStartSpeechMs_;
-    int vadEndSilenceMs_;
-    int vadMaxCaptureMs_;
-    int vadPreRollMs_;
-    int vadAmplitudeThreshold_;
     std::string deviceName_;
+    FrameCallback callback_;
+    std::atomic<bool> running_{false};
+    std::thread thread_;
 };
 
 }  // namespace voice_agent

@@ -590,7 +590,7 @@ const ToolDefinition& WebBrowserTool::Definition() const {
     return definition_;
 }
 
-ToolResult WebBrowserTool::Execute(const ToolCall& call) const {
+ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken* token) const {
     if (!call.arguments.contains("steps") || !call.arguments.at("steps").is_array() || call.arguments.at("steps").empty()) {
         return ToolResult{false, false, "steps dizisi gerekli.", {{"reason", "missing_steps"}}};
     }

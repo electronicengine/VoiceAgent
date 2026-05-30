@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/CancellationToken.h"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -11,6 +13,7 @@ struct HttpRequest {
     std::vector<std::string> headers;
     std::string body;
     long timeoutSeconds = 90L;
+    const CancellationToken* cancellationToken = nullptr;
 };
 
 struct MultipartField {
@@ -28,6 +31,7 @@ struct MultipartFile {
 struct HttpResponse {
     long statusCode = 0;
     std::string body;
+    bool cancelled = false;
 };
 
 class HttpClient {
@@ -40,7 +44,8 @@ public:
         const std::vector<std::string>& headers,
         const std::vector<MultipartField>& fields,
         const MultipartFile& file,
-        long timeoutSeconds = 90L) const;
+        long timeoutSeconds = 90L,
+        const CancellationToken* cancellationToken = nullptr) const;
 };
 
 }  // namespace voice_agent

@@ -2,6 +2,7 @@
 
 #include "common/StringUtils.h"
 
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
@@ -12,58 +13,154 @@ VoiceAgent::VoiceAgent(
     std::unique_ptr<ITranscriber> transcriber,
     std::unique_ptr<IInterpreter> interpreter,
     std::unique_ptr<ISynthesizer> synthesizer,
+    std::unique_ptr<VoiceController> voiceController,
     std::string systemPrompt,
     AgentToolOrchestrator agentOrchestrator)
     : Agent(std::move(interpreter), std::move(systemPrompt), std::move(agentOrchestrator)),
       transcriber_(std::move(transcriber)),
-      synthesizer_(std::move(synthesizer)) {}
+      synthesizer_(std::move(synthesizer)),
+      voiceController_(std::move(voiceController)) {}
+
+VoiceAgent::~VoiceAgent() {
+    {
+        std::lock_guard<std::mutex> lock(turnMutex_);
+        if (currentTurn_) {
+            currentTurn_->token->Cancel();
+        }
+    }
+    if (voiceController_) {
+        voiceController_->StopSpeaking();
+        voiceController_->Stop();
+    }
+    {
+        std::unique_ptr<Turn> turn;
+        {
+            std::lock_guard<std::mutex> lock(turnMutex_);
+            turn = std::move(currentTurn_);
+        }
+        if (turn && turn->thread.joinable()) {
+            turn->thread.join();
+        }
+    }
+    JoinFinishedTurn();
+}
 
 void VoiceAgent::Run() {
     std::cout << "Voice agent is ready. Speak into your microphone.\n";
-    std::cout << "Say 'exit' or 'quit' to stop.\n\n";
+    std::cout << "Press Ctrl+C to stop.\n\n";
 
-    while (true) {
-        std::cout << "Listening...\n";
-        const std::string userText = Trim(transcriber_->ListenOnce());
-        if (userText.empty()) {
-            std::cout << "Speech could not be recognized.\n\n";
-            continue;
+    voiceController_->SetOnUtterance(
+        [this](std::vector<char> wavBytes) { HandleUtterance(std::move(wavBytes)); });
+    voiceController_->SetOnBargeIn([this]() { HandleBargeIn(); });
+    voiceController_->Start();
+
+    std::unique_lock<std::mutex> lock(exitMutex_);
+    exitCv_.wait(lock, [this]() { return shouldExit_.load(); });
+
+    voiceController_->Stop();
+}
+
+void VoiceAgent::HandleUtterance(std::vector<char> wavBytes) {
+    CancelCurrentTurn();
+    JoinFinishedTurn();
+
+    auto turn = std::make_unique<Turn>();
+    turn->token = std::make_shared<CancellationToken>();
+
+    auto token = turn->token;
+    auto wav = std::move(wavBytes);
+    turn->thread = std::thread([this, wav = std::move(wav), token]() mutable {
+        RunTurnThread(std::move(wav), token);
+    });
+
+    std::lock_guard<std::mutex> lock(turnMutex_);
+    currentTurn_ = std::move(turn);
+}
+
+void VoiceAgent::HandleBargeIn() {
+    CancelCurrentTurn();
+}
+
+void VoiceAgent::CancelCurrentTurn() {
+    std::unique_ptr<Turn> turn;
+    {
+        std::lock_guard<std::mutex> lock(turnMutex_);
+        if (!currentTurn_) {
+            return;
+        }
+        currentTurn_->token->Cancel();
+        turn = std::move(currentTurn_);
+    }
+    if (voiceController_) {
+        voiceController_->StopSpeaking();
+        voiceController_->SetBusy(false);
+    }
+    {
+        std::lock_guard<std::mutex> lock(turnMutex_);
+        if (finishedTurn_ && finishedTurn_->thread.joinable()) {
+            finishedTurn_->thread.join();
+        }
+        finishedTurn_ = std::move(turn);
+    }
+}
+
+void VoiceAgent::JoinFinishedTurn() {
+    std::unique_ptr<Turn> turn;
+    {
+        std::lock_guard<std::mutex> lock(turnMutex_);
+        turn = std::move(finishedTurn_);
+    }
+    if (turn && turn->thread.joinable()) {
+        turn->thread.join();
+    }
+}
+
+void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr token) {
+    try {
+        if (token->IsCancelled()) {
+            return;
         }
 
-        const std::string lowered = ToLower(userText);
-        if (lowered == "exit" || lowered == "quit") {
-            break;
+        voiceController_->SetBusy(true);
+
+        const std::string userText = Trim(transcriber_->Transcribe(wavBytes, token.get()));
+        if (token->IsCancelled() || userText.empty()) {
+            voiceController_->SetBusy(false);
+            return;
         }
 
         std::cout << "You: " << userText << "\n";
         std::cout << "Agent: " << std::flush;
-        bool streamedAnyText = false;
 
         const AgentTurnResult turnResult = RunTurn(
             userText,
-            [this, &streamedAnyText](const InterpreterResponse& partialResponse) {
+            [this, &token](const InterpreterResponse& partialResponse) {
+                if (token->IsCancelled()) {
+                    return;
+                }
                 const std::string streamedText = partialResponse.SpeakableText();
                 if (streamedText.empty()) {
                     return;
                 }
-                streamedAnyText = true;
                 std::cout << streamedText << ' ' << std::flush;
-                synthesizer_->Synthesize(partialResponse);
-            }
-        );
-        const InterpreterResponse& response = turnResult.finalResponse;
-        if (response.Empty()) {
-            throw std::runtime_error("Interpreter returned an empty response.");
-        }
+                std::string pcm = synthesizer_->Synthesize(partialResponse, token.get());
+                if (!pcm.empty() && !token->IsCancelled()) {
+                    voiceController_->Speak(std::move(pcm));
+                }
+            },
+            token.get());
 
-        const std::string displayText = response.DisplayText();
-        if (!streamedAnyText && !response.SpeakableText().empty()) {
-            std::cout << response.SpeakableText();
+        std::cout << "\n";
+
+        if (!token->IsCancelled()) {
+            voiceController_->WaitUntilSpeakerIdle();
         }
-        std::cout << "\n\n";
-        if (!response.SpeakableText().empty() && Trim(displayText) != Trim(response.SpeakableText())) {
-            std::cout << "Agent details:\n" << displayText << "\n\n";
+        voiceController_->SetBusy(false);
+    } catch (const std::exception& ex) {
+        if (!token->IsCancelled()) {
+            std::cerr << "Voice agent turn failed: " << ex.what() << "\n";
         }
+        voiceController_->SetBusy(false);
     }
 }
 

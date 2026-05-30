@@ -1,6 +1,5 @@
 #include "transcriber/DeepgramTranscriber.h"
 
-#include "audio/AlsaMicrophone.h"
 #include "common/StringUtils.h"
 
 #include <stdexcept>
@@ -31,14 +30,7 @@ std::string BoolQueryValue(bool value) {
 }  // namespace
 
 DeepgramTranscriber::DeepgramTranscriber(const AppConfig& config)
-    : DeepgramTranscriber(
-          config,
-          std::make_unique<AlsaMicrophone>(config)) {}
-
-DeepgramTranscriber::DeepgramTranscriber(
-    const AppConfig& config,
-    std::unique_ptr<IMicrophone> microphone)
-    : ITranscriber(config, std::move(microphone)) {}
+    : ITranscriber(config) {}
 
 HttpRequest DeepgramTranscriber::BuildRequest(const std::vector<char>& audioData) const {
     const AppConfig& config = Config();
