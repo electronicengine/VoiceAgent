@@ -12,12 +12,13 @@ namespace {
 
 constexpr float kMinRms = 250.0f;
 constexpr float kNoiseFloorMultiplier = 3.0f;
-// AEC3 cancels the speaker's echo well, so the playback-time gate is much
-// closer to the regular gate. We still apply a slightly stricter floor to
-// suppress occasional residue, but no longer require the user to overpower
-// the raw speaker output (that defeats barge-in).
-constexpr float kPlaybackRmsMultiplier = 4.0f;
-constexpr float kPlaybackMinRms = 600.0f;
+// While our own speaker (or a known external producer) is playing, AEC residue
+// of the agent's own TTS leaks through at RMS levels around 1500-2000. To keep
+// real barge-in working we deliberately keep the gate above that residue, but
+// well below typical user speech RMS (~3000-8000 on a desk mic). These values
+// were tuned against an observed false-positive at rms=1886 / noise=37.
+constexpr float kPlaybackRmsMultiplier = 8.0f;
+constexpr float kPlaybackMinRms = 2500.0f;
 constexpr int kPlaybackStartSpeechMultiplier = 2;  // need 2x normal consecutive frames
 
 bool VadDebugEnabled() {

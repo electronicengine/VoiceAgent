@@ -7,6 +7,13 @@
   "accountsFilePath": "account.json",
   "accountsRootDir": ".voice_agent_browser/accounts",
   "browserPromptTimeoutSeconds": 240,
+  "skills": {
+    "skillsEnabled": true,
+    "skillsDir": "skills",
+    "experiencesFilePath": "experiences.md",
+    "maxExperienceLines": 100,
+    "maxSkillsPerTurn": 3
+  },
   "transcriber": {
     "provider": "azure",
     "captureDurationSeconds": 6,

@@ -49,6 +49,10 @@ void TextAgent::Run() {
 
                 streamedAnyText = true;
                 std::cout << streamedText << ' ' << std::flush;
+            },
+            nullptr,
+            [](const std::string& announcement) {
+                std::cout << "[announcement] " << announcement << "\n";
             }
         );
         const InterpreterResponse& response = turnResult.finalResponse;

@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace voice_agent {
@@ -75,6 +76,7 @@ private:
     void OnMicFrame(const std::int16_t* samples, std::size_t sampleCount);
     void OnSpeakerFrame(const std::int16_t* samples, std::size_t sampleCount);
     void EmitUtterance();
+    void RunExternalPlaybackPoller();
 
     std::unique_ptr<IMicrophone> microphone_;
     std::unique_ptr<ISpeaker> speaker_;
@@ -89,6 +91,14 @@ private:
     std::atomic<bool> running_{false};
     std::atomic<bool> busy_{false};
     bool speakerWasActive_ = false;
+
+    // True while a known external audio producer (currently: mpv) is playing
+    // through the system default sink. The agent's AEC has no reference for
+    // such audio, so VAD would otherwise treat the music itself as user
+    // speech and trigger spurious barge-ins.
+    std::atomic<bool> externalPlaybackActive_{false};
+    std::atomic<bool> externalPollerStop_{false};
+    std::thread externalPollerThread_;
 };
 
 }  // namespace voice_agent

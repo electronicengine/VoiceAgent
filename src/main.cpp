@@ -14,7 +14,9 @@
 #include "config/AccountStore.h"
 #include "agent/TextAgent.h"
 #include "interpreter/OpenAiInterpreter.h"
+#include "skills/SkillRegistry.h"
 #include "tools/PythonTool.h"
+#include "tools/RememberTool.h"
 #include "synthesizer/AzureRestSynthesizer.h"
 #include "tools/ShellTool.h"
 #include "tools/WebBrowserTool.h"
@@ -26,7 +28,6 @@
 #include "audio/AlsaSpeaker.h"
 #include "audio/VoiceController.h"
 #include "audio/VoiceActivityDetector.h"
-
 #include <vector>
 
 namespace {
@@ -34,7 +35,9 @@ namespace {
 std::string BuildSystemPrompt(
     const std::string& staticPromptText,
     const std::vector<voice_agent::ToolDefinition>& toolDefinitions,
-    int maxAgentSteps) {
+    int maxAgentSteps,
+    const std::string& skillIndex,
+    const std::string& experiencesText) {
     nlohmann::json toolList = nlohmann::json::array();
     for (const auto& toolDefinition : toolDefinitions) {
         toolList.push_back({
@@ -50,6 +53,20 @@ std::string BuildSystemPrompt(
     prompt << staticPromptText << "\n\n";
     prompt << "Kullanilabilir araclar:\n";
     prompt << toolList.dump(2) << "\n\n";
+    if (!skillIndex.empty()) {
+        prompt << "## Skill Index\n";
+        prompt << "Asagidaki skill'lerin detayli kullanim talimatlari, kullanici girdisi "
+                  "ilgili anahtar kelimeleri icerdiginde otomatik olarak [SKILL: name] "
+                  "bloklari halinde mesajinin basina eklenir. Sen sadece konuyu bil; "
+                  "detay icin enjekte edilen blogu oku.\n";
+        prompt << skillIndex << "\n";
+    }
+    if (!experiencesText.empty()) {
+        prompt << "## Onceki Deneyimlerim\n";
+        prompt << "Bu satirlar gecmis turlardan ogrenilmis kisa derslerdir. Ilgili "
+                  "oldugunda kullan.\n";
+        prompt << experiencesText << "\n\n";
+    }
 
     std::cout << "System prompt:\n" << prompt.str() << "\n\n";
     return prompt.str();
@@ -85,12 +102,41 @@ int main() {
         voice_agent::ShellTool shellTool;
         voice_agent::PythonTool pythonTool;
         voice_agent::WebBrowserTool webBrowserTool(config, &accountStore);
-        std::vector<voice_agent::ITool*> tools{&shellTool, &pythonTool, &webBrowserTool};
-        voice_agent::AgentToolOrchestrator agentOrchestrator(*interpreter, tools, config);
+        voice_agent::RememberTool rememberTool(
+            config.resolvedExperiencesFilePath,
+            config.maxExperienceLines
+        );
+
+        voice_agent::SkillRegistry skillRegistry;
+        if (config.skillsEnabled && !config.resolvedSkillsDir.empty()) {
+            skillRegistry.Load(config.resolvedSkillsDir);
+            std::cout << "Loaded " << skillRegistry.Skills().size()
+                      << " skills from " << config.resolvedSkillsDir << "\n";
+        }
+        if (!config.resolvedExperiencesFilePath.empty()) {
+            std::cout << "Experiences file: " << config.resolvedExperiencesFilePath
+                      << " (" << (config.experiencesText.empty() ? 0 : 1)
+                      << " loaded section)\n";
+        }
+
+        std::vector<voice_agent::ITool*> tools{
+            &shellTool, &pythonTool, &webBrowserTool, &rememberTool
+        };
+        std::vector<voice_agent::ToolDefinition> toolDefinitions{
+            shellTool.Definition(),
+            pythonTool.Definition(),
+            webBrowserTool.Definition(),
+            rememberTool.Definition()
+        };
+        voice_agent::AgentToolOrchestrator agentOrchestrator(
+            *interpreter, tools, config, &skillRegistry
+        );
         const std::string systemPrompt = BuildSystemPrompt(
             config.systemPromptText,
-            {shellTool.Definition(), pythonTool.Definition(), webBrowserTool.Definition()},
-            config.maxAgentSteps
+            toolDefinitions,
+            config.maxAgentSteps,
+            skillRegistry.RenderIndex(),
+            config.experiencesText
         );
 
         std::unique_ptr<voice_agent::IUserPromptProvider> promptProvider;

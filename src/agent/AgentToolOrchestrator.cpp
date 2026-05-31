@@ -24,17 +24,49 @@ bool MatchesToolName(const ToolDefinition& definition, const std::string& toolNa
 AgentToolOrchestrator::AgentToolOrchestrator(
         IInterpreter& interpreter,
         const std::vector<ITool*>& tools,
-        const AppConfig& config)
+        const AppConfig& config,
+        const SkillRegistry* skillRegistry)
     : interpreter_(interpreter),
             tools_(tools),
-      maxAgentSteps_(config.maxAgentSteps) {}
+      skillRegistry_(skillRegistry),
+      maxAgentSteps_(config.maxAgentSteps),
+      maxSkillsPerTurn_(static_cast<std::size_t>(config.maxSkillsPerTurn > 0 ? config.maxSkillsPerTurn : 3)) {}
 
 AgentTurnResult AgentToolOrchestrator::RunTurn(
     const std::string& userText,
     const InterpreterStreamCallback& onPartialResponse,
-    const CancellationToken* token) const {
+    const CancellationToken* token,
+    const AnnouncementCallback& onAnnouncement) const {
     InterpreterInput currentInput;
     currentInput.text = userText;
+
+    if (skillRegistry_ != nullptr && !skillRegistry_->Empty()) {
+        const auto matched = skillRegistry_->MatchSkills(userText, maxSkillsPerTurn_);
+        if (!matched.empty()) {
+            std::cout << "Matched skills:";
+            for (const auto* skill : matched) {
+                std::cout << " " << skill->name;
+            }
+            std::cout << "\n";
+            for (const auto* skill : matched) {
+                std::cout << "--- [SKILL: " << skill->name << "] body ---\n"
+                          << skill->body << "\n--- [/SKILL] ---\n\n";
+            }
+            if (onAnnouncement) {
+                std::string names;
+                for (std::size_t i = 0; i < matched.size(); ++i) {
+                    if (i != 0) {
+                        names += ", ";
+                    }
+                    names += matched[i]->name;
+                }
+                onAnnouncement("Bir yetenek kullaniyorum: " + names + ".");
+            }
+            const std::string injection = SkillRegistry::RenderInjection(matched);
+            currentInput.text = injection + currentInput.text;
+        }
+    }
+
     AgentTurnResult result;
 
     for (int step = 0; step < maxAgentSteps_; ++step) {
@@ -61,6 +93,9 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
         const ITool* tool = ResolveTool(call.name);
 
         std::cout << "Executing tool: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
+        if (onAnnouncement) {
+            onAnnouncement(call.name + " kullaniyorum.");
+        }
         if (tool == nullptr) {
             toolResult = ToolResult{
                 false,

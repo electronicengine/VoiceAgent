@@ -175,8 +175,10 @@ add_executable(cpp_voice_agent
     src/config/AccountStore.cpp
     src/config/AppConfig.cpp
     src/interpreter/OpenAiInterpreter.cpp
+    src/skills/SkillRegistry.cpp
     src/synthesizer/AzureRestSynthesizer.cpp
     src/tools/PythonTool.cpp
+    src/tools/RememberTool.cpp
     src/tools/ShellTool.cpp
     src/tools/WebBrowserTool.cpp
     src/transcriber/ITranscriber.cpp

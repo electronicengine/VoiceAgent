@@ -407,6 +407,21 @@ AppConfig LoadConfig() {
     );
 
     {
+        const nlohmann::json* skillsJson = ReadSection(configJson, "skills");
+        config.skillsEnabled = ReadBoolField(skillsJson, configJson, "skillsEnabled", true);
+        config.skillsDir = ReadStringField(skillsJson, configJson, "skillsDir", "skills");
+        config.experiencesFilePath = ReadStringField(
+            skillsJson, configJson, "experiencesFilePath", "experiences.md"
+        );
+        config.maxExperienceLines = ReadPositiveIntField(
+            skillsJson, configJson, "maxExperienceLines", 100
+        );
+        config.maxSkillsPerTurn = ReadPositiveIntField(
+            skillsJson, configJson, "maxSkillsPerTurn", 3
+        );
+    }
+
+    {
         const std::filesystem::path resolvedAccountsFile = ResolveOptionalPath(configPath, config.accountsFilePath);
         if (!resolvedAccountsFile.empty()) {
             config.resolvedAccountsFilePath = resolvedAccountsFile.string();
@@ -414,6 +429,20 @@ AppConfig LoadConfig() {
         const std::filesystem::path resolvedAccountsRoot = ResolveOptionalPath(configPath, config.accountsRootDir);
         if (!resolvedAccountsRoot.empty()) {
             config.resolvedAccountsRootDir = resolvedAccountsRoot.string();
+        }
+        const std::filesystem::path resolvedSkills = ResolveOptionalPath(configPath, config.skillsDir);
+        if (!resolvedSkills.empty()) {
+            config.resolvedSkillsDir = resolvedSkills.string();
+        }
+        const std::filesystem::path resolvedExperiences = ResolveOptionalPath(configPath, config.experiencesFilePath);
+        if (!resolvedExperiences.empty()) {
+            config.resolvedExperiencesFilePath = resolvedExperiences.string();
+            std::ifstream file(resolvedExperiences);
+            if (file) {
+                std::ostringstream buf;
+                buf << file.rdbuf();
+                config.experiencesText = Trim(buf.str());
+            }
         }
     }
 

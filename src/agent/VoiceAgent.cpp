@@ -61,6 +61,12 @@ void VoiceAgent::Run() {
 }
 
 void VoiceAgent::HandleUtterance(std::vector<char> wavBytes) {
+    {
+        std::lock_guard<std::mutex> lock(turnMutex_);
+        if (currentTurn_) {
+            std::cout << "[VoiceAgent] new utterance arrived; cancelling previous turn\n";
+        }
+    }
     CancelCurrentTurn();
     JoinFinishedTurn();
 
@@ -78,6 +84,7 @@ void VoiceAgent::HandleUtterance(std::vector<char> wavBytes) {
 }
 
 void VoiceAgent::HandleBargeIn() {
+    std::cout << "[VoiceAgent] HandleBargeIn -> cancelling current turn\n";
     CancelCurrentTurn();
 }
 
@@ -148,7 +155,20 @@ void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr 
                     voiceController_->Speak(std::move(pcm));
                 }
             },
-            token.get());
+            token.get(),
+            [this, &token](const std::string& announcement) {
+                if (token->IsCancelled()) {
+                    return;
+                }
+                std::cout << "[announcement] " << announcement << "\n";
+                InterpreterResponse speakResponse;
+                speakResponse.segments.push_back(
+                    ResponseSegment{ResponseSegmentType::Speech, announcement, true});
+                std::string pcm = synthesizer_->Synthesize(speakResponse, token.get());
+                if (!pcm.empty() && !token->IsCancelled()) {
+                    voiceController_->Speak(std::move(pcm));
+                }
+            });
 
         std::cout << "\n";
 

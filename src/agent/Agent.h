@@ -25,7 +25,8 @@ protected:
     AgentTurnResult RunTurn(
         const std::string& userText,
         const InterpreterStreamCallback& onPartialResponse,
-        const CancellationToken* token = nullptr) const;
+        const CancellationToken* token = nullptr,
+        const AnnouncementCallback& onAnnouncement = {}) const;
 
 private:
     std::unique_ptr<IInterpreter> interpreter_;

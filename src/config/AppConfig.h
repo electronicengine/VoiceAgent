@@ -34,7 +34,7 @@ struct AppConfig {
     int vadAmplitudeThreshold = 900;
     int vadPlaybackCooldownMs = 200;
     int aecStreamDelayMs = 40;
-    int maxAgentSteps = 3;
+    int maxAgentSteps =10;
     int openAiRunPollIntervalMs = 500;
     int openAiRunPollTimeoutSeconds = 90;
     bool deepgramSmartFormat = true;
@@ -49,6 +49,16 @@ struct AppConfig {
     std::string accountsRootDir;
     std::string resolvedAccountsRootDir;
     int browserPromptTimeoutSeconds = 180;
+
+    // Skill / experience system
+    bool skillsEnabled = true;
+    std::string skillsDir;
+    std::string resolvedSkillsDir;
+    std::string experiencesFilePath;
+    std::string resolvedExperiencesFilePath;
+    std::string experiencesText;
+    int maxExperienceLines = 100;
+    int maxSkillsPerTurn = 3;
 };
 
 AppConfig LoadConfig();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <iostream>
 #include <memory>
 
 namespace voice_agent {
@@ -11,7 +12,12 @@ public:
     CancellationToken(const CancellationToken&) = delete;
     CancellationToken& operator=(const CancellationToken&) = delete;
 
-    void Cancel() noexcept { cancelled_.store(true, std::memory_order_release); }
+    void Cancel() noexcept {
+        bool expected = false;
+        if (cancelled_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+            std::cout << "[CancellationToken] Cancel requested.\n";
+        }
+    }
     bool IsCancelled() const noexcept { return cancelled_.load(std::memory_order_acquire); }
 
 private:

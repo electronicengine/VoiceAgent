@@ -24,6 +24,7 @@ struct ConversationMessage {
 };
 
 using InterpreterStreamCallback = std::function<void(const struct InterpreterResponse&)>;
+using AnnouncementCallback = std::function<void(const std::string&)>;
 
 enum class ResponseSegmentType {
     Speech,
