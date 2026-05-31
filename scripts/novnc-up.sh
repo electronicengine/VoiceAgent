@@ -1,8 +1,8 @@
 #!/bin/bash
 # Starts a virtual desktop (Xvfb + fluxbox + x11vnc + noVNC) on the robot.
-# All ports bind to localhost; access from laptop via SSH tunnel:
-#   ssh -L 6080:localhost:6080 kufi@<robot-ip>
-# Then open http://localhost:6080/vnc.html in the laptop browser.
+# Default mode exposes noVNC on the local network so the user can open a
+# single web page: http://<robot-ip>:6080/vnc.html
+# Set NOVNC_PUBLIC=0 to keep the old localhost-only + SSH tunnel mode.
 
 set -e
 
@@ -11,6 +11,15 @@ SCREEN_GEOMETRY=${SCREEN_GEOMETRY:-1366x900x24}
 VNC_PORT=${VNC_PORT:-5901}
 NOVNC_PORT=${NOVNC_PORT:-6080}
 NOVNC_HTML_DIR=${NOVNC_HTML_DIR:-/usr/share/novnc}
+NOVNC_PUBLIC=${NOVNC_PUBLIC:-1}
+
+if [[ "${NOVNC_PUBLIC}" == "1" ]]; then
+  VNC_BIND_HOST="0.0.0.0"
+  NOVNC_BIND_HOST="0.0.0.0"
+else
+  VNC_BIND_HOST="127.0.0.1"
+  NOVNC_BIND_HOST="127.0.0.1"
+fi
 
 PID_DIR="${HOME}/.voice_agent_browser/novnc"
 mkdir -p "${PID_DIR}"
@@ -49,14 +58,37 @@ start_proc "xvfb" Xvfb ":${DISPLAY_NUM}" -screen 0 "${SCREEN_GEOMETRY}" -noliste
 # 2) Fluxbox window manager (so chromium has decorations / focus)
 start_proc "fluxbox" env DISPLAY=":${DISPLAY_NUM}" fluxbox
 
-# 3) x11vnc bound to localhost, no password (SSH tunnel handles auth)
-start_proc "x11vnc" x11vnc -display ":${DISPLAY_NUM}" -rfbport "${VNC_PORT}" \
-    -localhost -forever -shared -nopw -quiet
+# 3) x11vnc; in public mode it binds on the LAN, otherwise only localhost.
+if [[ "${NOVNC_PUBLIC}" == "1" ]]; then
+    start_proc "x11vnc" x11vnc -display ":${DISPLAY_NUM}" -rfbport "${VNC_PORT}" \
+        -forever -shared -nopw -quiet
+else
+    start_proc "x11vnc" x11vnc -display ":${DISPLAY_NUM}" -rfbport "${VNC_PORT}" \
+        -localhost -forever -shared -nopw -quiet
+fi
 
-# 4) websockify (noVNC bridge) bound to localhost
+# 4) websockify (noVNC bridge)
 start_proc "websockify" websockify --web="${NOVNC_HTML_DIR}" \
-    "127.0.0.1:${NOVNC_PORT}" "127.0.0.1:${VNC_PORT}"
+    "${NOVNC_BIND_HOST}:${NOVNC_PORT}" "${VNC_BIND_HOST}:${VNC_PORT}"
 
+if [[ "${NOVNC_PUBLIC}" == "1" ]]; then
+cat <<EOF
+
+[novnc-up] Sanal masaustu hazir:
+  DISPLAY=:${DISPLAY_NUM}  (Xvfb, ${SCREEN_GEOMETRY})
+  noVNC: http://${ROBOT_IP}:${NOVNC_PORT}/vnc.html  (aynı ağdan doğrudan erişim)
+
+Laptop veya telefondan tarayıcıda aç:
+  http://${ROBOT_IP}:${NOVNC_PORT}/vnc.html
+
+Agent'i bu DISPLAY ile calistirmak icin (ayni shell veya yeni bir terminal):
+  export DISPLAY=:${DISPLAY_NUM}
+  cd build && ./cpp_voice_agent
+
+Durdurmak icin:
+  scripts/novnc-down.sh
+EOF
+else
 cat <<EOF
 
 [novnc-up] Sanal masaustu hazir:
@@ -76,3 +108,4 @@ Agent'i bu DISPLAY ile calistirmak icin (ayni shell veya yeni bir terminal):
 Durdurmak icin:
   scripts/novnc-down.sh
 EOF
+fi

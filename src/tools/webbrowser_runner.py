@@ -435,6 +435,15 @@ ACCESSIBILITY_CONTROL_PATTERNS = [
     "jump menu",
 ]
 
+COOKIE_MANAGEMENT_PATTERNS = [
+    "manage cookies",
+    "manage cookie",
+    "cookie preferences",
+    "manage cookie preferences",
+    "cookie settings",
+    "privacy statement",
+]
+
 
 def is_accessibility_control_text(text):
     normalized = (text or "").strip().casefold()
@@ -443,6 +452,13 @@ def is_accessibility_control_text(text):
     if normalized.startswith("skip to "):
         return True
     return any(pattern in normalized for pattern in ACCESSIBILITY_CONTROL_PATTERNS)
+
+
+def is_cookie_management_text(text):
+    normalized = (text or "").strip().casefold()
+    if not normalized:
+        return False
+    return any(pattern in normalized for pattern in COOKIE_MANAGEMENT_PATTERNS)
 
 
 async def any_selector_visible(page, selector_list, timeout_ms=4000):
@@ -468,35 +484,62 @@ async def any_selector_visible(page, selector_list, timeout_ms=4000):
     return False, ""
 
 
-def is_probable_linkedin_logged_in_page(page_title, page_text, page_url):
+def is_probable_generic_logged_out_page(page_title, page_text, page_url, login_url=""):
     title = (page_title or "").casefold()
     text = (page_text or "").casefold()
     url = (page_url or "").casefold()
+    login_url = (login_url or "").casefold()
 
-    if "linkedin.com" not in url:
-        return False
+    url_signals = [
+        "/login",
+        "/signin",
+        "/sign-in",
+        "/register",
+        "/signup",
+        "/sign-up",
+        "/auth",
+    ]
+    if any(signal in url for signal in url_signals):
+        return True
+    if login_url and url == login_url:
+        return True
 
-    logged_out_signals = [
-        "sign in",
-        "join now",
-        "oturum aç",
-        "giriş yap",
-        "kaydol",
+    combined = "\n".join([title, text])
+    strong_auth_signals = [
         "forgot password",
+        "create your account",
+        "already have an account",
+        "continue with google",
+        "continue with github",
+        "or sign up with",
+        "or continue with",
+        "keep me signed in",
+        "stay signed in",
+        "trouble signing in",
     ]
-    if any(signal in text or signal in title for signal in logged_out_signals):
-        return False
+    if any(signal in combined for signal in strong_auth_signals):
+        return True
 
-    shell_signals = [
-        "feed | linkedin",
-        "notifications | linkedin",
-        "messaging | linkedin",
-        "my network",
-        "messaging",
-        "notifications",
-        "for business",
+    auth_action_signals = [
+        "sign in",
+        "log in",
+        "login",
+        "sign up",
+        "signup",
+        "create account",
     ]
-    return sum(1 for signal in shell_signals if signal in title or signal in text) >= 2
+    credential_signals = [
+        "email",
+        "e-mail",
+        "work email",
+        "phone",
+        "password",
+        "passkey",
+        "show password",
+    ]
+    has_auth_action = any(signal in combined for signal in auth_action_signals)
+    has_credential_prompt = any(signal in combined for signal in credential_signals)
+    return has_auth_action and has_credential_prompt
 
 
 async def _click_buttons_matching_text(page, patterns, timeout_ms=1500):
@@ -520,6 +563,9 @@ async def _click_buttons_matching_text(page, patterns, timeout_ms=1500):
                         continue
                     if is_accessibility_control_text(text):
                         log(f"overlay ignore accessibility control text='{text}'")
+                        continue
+                    if is_cookie_management_text(text):
+                        log(f"overlay ignore cookie management text='{text}'")
                         continue
                     if not any(p in text for p in patterns):
                         continue
@@ -555,6 +601,16 @@ async def _click_consent_selector_hints(page, timeout_ms=800):
                     if await locator.count() == 0:
                         continue
                     if not await locator.is_visible():
+                        continue
+                    try:
+                        text = (await locator.inner_text() or "").strip().casefold()
+                    except Exception:
+                        text = ""
+                    if is_accessibility_control_text(text):
+                        log(f"overlay ignore accessibility control selector hint='{selector}' text='{text}'")
+                        continue
+                    if is_cookie_management_text(text):
+                        log(f"overlay ignore cookie management selector hint='{selector}' text='{text}'")
                         continue
                     try:
                         await locator.click(timeout=timeout_ms, no_wait_after=True)
@@ -606,22 +662,6 @@ async def dismiss_overlays(page, max_passes=3):
     if dismissed:
         log(f"dismissed {dismissed} overlay/popup element(s)")
     return dismissed
-
-
-async def recover_linkedin_interstitial(page):
-    """LinkedIn sometimes opens a restore/ad-style interstitial page for logged-in
-    sessions. These pages are not a real login wall, but they hide the regular
-    global nav so a strict login selector check would look like a logged-out
-    state. Try to get back to the normal app shell before declaring failure."""
-    patterns = [
-        "back to linkedin", "back to linkein", "restore",
-        "geri don", "geri dön", "continue to linkedin",
-    ]
-    clicked = await _click_buttons_matching_text(page, patterns, timeout_ms=1200)
-    if clicked:
-        await asyncio.sleep(1.0)
-        return True
-    return False
 
 
 def detect_bot_challenge(page_title, page_text, page_url):
@@ -841,23 +881,21 @@ async def is_logged_in(page, account):
     """Best-effort check: navigate to loggedInUrl and decide whether the account
     is logged in. Strategy:
       1. Navigate to loggedInUrl.
-      2. If the resulting URL host is different from the target host (e.g. we
-         got redirected to accounts.google.com / github.com/login), treat as
-         not logged in.
-      3. Otherwise look for the loginCheckSelector. If it matches → logged in.
-         If it doesn't match but we are on the right host (no auth redirect),
-         still treat as logged in (selector is just a hint and may drift).
-      4. If no selector is given, host match alone is enough.
+        2. If the resulting URL host is different from the target host, treat as
+            not logged in.
+        3. If the page looks like a generic login wall, treat as not logged in.
+        4. Otherwise treat selector matches as strong evidence, but tolerate
+            selector drift while we remain on the expected host.
     """
     from urllib.parse import urlparse
 
     selector = (account.get("loginCheckSelector") or "").strip()
+    login_url = (account.get("loginUrl") or "").strip()
     target_url = (account.get("loggedInUrl") or "").strip()
-    provider = (account.get("provider") or "").strip().lower()
     if not target_url:
         return False
     log(
-        f"is_logged_in: account={account.get('id')} provider={provider} "
+          f"is_logged_in: account={account.get('id')} "
         f"target_url={target_url} selector={selector}"
     )
     try:
@@ -889,6 +927,10 @@ async def is_logged_in(page, account):
         log(f"is_logged_in: redirected to {current_host} (expected {target_host}); not logged in")
         return False
 
+    if is_probable_generic_logged_out_page(title, body_text, page.url, login_url):
+        log("is_logged_in: generic login wall detected; treating as not logged in")
+        return False
+
     if not selector:
         log(f"is_logged_in: no selector, host matches ({current_host}); assuming logged in")
         return True
@@ -898,28 +940,11 @@ async def is_logged_in(page, account):
         log(f"is_logged_in: selector matched ({matched_selector}); treating as logged in")
         return True
 
-    if provider == "linkedin" and is_probable_linkedin_logged_in_page(title, body_text, page.url):
-        log("is_logged_in: linkedin app shell detected without selector match; treating as logged in")
-        return True
-
-    if provider == "linkedin":
-        try:
-            recovered = await recover_linkedin_interstitial(page)
-        except Exception:
-            recovered = False
-        if recovered:
-            log("is_logged_in: linkedin interstitial recovery clicked; retrying selector check")
-            try:
-                await dismiss_overlays(page, max_passes=2)
-            except Exception:
-                pass
-            matched, matched_selector = await any_selector_visible(page, selector, timeout_ms=4000)
-            if matched:
-                log(f"is_logged_in: linkedin interstitial recovered via {matched_selector}; treating as logged in")
-                return True
-
-    log(f"is_logged_in: selector miss on {current_host}; treating as not logged in")
-    return False
+    log(
+        f"is_logged_in: selector miss on {current_host}, but no login wall detected; "
+        "assuming logged in"
+    )
+    return True
 
 
 async def perform_manual_login(page, account):

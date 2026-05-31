@@ -7,7 +7,7 @@
 }
 ---
 Hesap (Account) Modu — LinkedIn:
-* Sayfa ilk açıldığında bir reklam / restore sayfası çıkabilir. Bu, oturumun kapalı olduğu anlamına gelmez. "Back to LinkedIn", "Restore" gibi butonlarla ana uygulamaya dön.
+* Sayfa ilk açıldığında reklam / restore / interstitial sayfası çıkabilir. Bu, oturumun kapalı olduğu anlamına gelmez. Böyle bir durumda WebBrowserTool `steps` içine ilk iş olarak `click_first` ekleyip "Back to LinkedIn", "Restore", "Continue to LinkedIn" benzeri butonlarla ana uygulamaya dön; bu recovery mantığını runner'dan bekleme.
 * LinkedIn'de ASLA "önce biraz dolaşayım, ikonlara bakayım" yaklaşımı kullanma. hangi işlemi istiyorsa doğrudan onu yap. 
 * Kullanıcı bildirimlerime bak derse DOGRUDAN https://www.linkedin.com/notifications/ sayfasına git; messaging ikonuna, arama kutusuna veya başka menülere tıklayarak keşif yapma.
 * Kullanıcı mesajlarıma bak derse DOGRUDAN `https://www.linkedin.com/messaging/` sayfasına git; başka ikonlara tıklayarak gezinme.
@@ -23,6 +23,13 @@ LinkedIn feed / ana sayfa:
     "accountId": "linkedin_main",
     "steps": [
       { "action": "goto", "url": "https://www.linkedin.com/feed/" },
+      { "action": "click_first", "selectors": [
+        { "textSelector": "Back to LinkedIn" },
+        { "textSelector": "Restore" },
+        { "textSelector": "Continue to LinkedIn" },
+        { "textSelector": "Geri dön" },
+        { "textSelector": "Geri don" }
+      ], "requireSuccess": false },
       { "action": "dismiss_popups", "maxPasses": 2 },
       { "action": "wait_for_selector", "selector": ".feed-container-theme, main", "timeoutMs": 30000 },
       { "action": "snapshot", "maxLength": 3000 }
@@ -37,6 +44,13 @@ LinkedIn bildirimleri:
     "accountId": "linkedin_main",
     "steps": [
       { "action": "goto", "url": "https://www.linkedin.com/notifications/" },
+      { "action": "click_first", "selectors": [
+        { "textSelector": "Back to LinkedIn" },
+        { "textSelector": "Restore" },
+        { "textSelector": "Continue to LinkedIn" },
+        { "textSelector": "Geri dön" },
+        { "textSelector": "Geri don" }
+      ], "requireSuccess": false },
       { "action": "dismiss_popups", "maxPasses": 2 },
       { "action": "wait_for_selector", "selector": ".nt-card-list, .notification-card, main", "timeoutMs": 30000 },
       { "action": "extract_text", "selector": ".nt-card-list, main", "maxLength": 2500 }
@@ -51,6 +65,13 @@ LinkedIn mesajları:
     "accountId": "linkedin_main",
     "steps": [
       { "action": "goto", "url": "https://www.linkedin.com/messaging/" },
+      { "action": "click_first", "selectors": [
+        { "textSelector": "Back to LinkedIn" },
+        { "textSelector": "Restore" },
+        { "textSelector": "Continue to LinkedIn" },
+        { "textSelector": "Geri dön" },
+        { "textSelector": "Geri don" }
+      ], "requireSuccess": false },
       { "action": "dismiss_popups", "maxPasses": 2 },
       { "action": "wait_for_selector", "selector": ".msg-conversations-container, .msg-overlay-list-bubble, main", "timeoutMs": 30000 },
       { "action": "snapshot", "maxLength": 3000 }

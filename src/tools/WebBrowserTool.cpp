@@ -35,6 +35,11 @@ struct CommandExecution {
     std::string output;
 };
 
+std::filesystem::path ResolveRepoRootFromRunner(const std::string& runnerPath) {
+    std::filesystem::path runner = std::filesystem::absolute(std::filesystem::path(runnerPath));
+    return runner.parent_path().parent_path().parent_path();
+}
+
 nlohmann::json BuildAccountRecoveryOutput(const nlohmann::json& payload,
                                          const std::string& accountId,
                                          const std::string& runCommand,
@@ -79,6 +84,53 @@ std::string ShellEscape(const std::string& value) {
     }
     escaped += "'";
     return escaped;
+}
+
+nlohmann::json BuildSessionRecoveryOutput(const nlohmann::json& payload,
+                                         const std::string& sessionId,
+                                         const std::string& displayName,
+                                         const std::string& loginUrl,
+                                         const std::string& loggedInUrl,
+                                         const std::string& loginCheckSelector,
+                                         const std::filesystem::path& repoRoot,
+                                         const std::string& runCommand,
+                                         int exitCode) {
+    std::string recoveryCommand =
+        "cd " + ShellEscape(repoRoot.string()) +
+        " && KEEP_NOVNC=1 bash scripts/site-login.sh" +
+        " --session-id " + ShellEscape(sessionId) +
+        " --display-name " + ShellEscape(displayName.empty() ? sessionId : displayName) +
+        " --login-url " + ShellEscape(loginUrl) +
+        " --logged-in-url " + ShellEscape(loggedInUrl.empty() ? loginUrl : loggedInUrl);
+    if (!loginCheckSelector.empty()) {
+        recoveryCommand += " --login-check-selector " + ShellEscape(loginCheckSelector);
+    }
+
+    nlohmann::json out = {
+        {"stage", "run_browser_script"},
+        {"command", runCommand},
+        {"exitCode", exitCode},
+        {"output", payload},
+        {"sessionId", sessionId},
+        {"displayName", displayName},
+        {"loginUrl", loginUrl},
+        {"loggedInUrl", loggedInUrl},
+        {"loginCheckSelector", loginCheckSelector},
+        {"reason", "session_login_required"},
+        {"recoveryCommand", recoveryCommand}
+    };
+
+    if (payload.contains("loginStatus") && payload.at("loginStatus").is_object()) {
+        out["loginStatus"] = payload.at("loginStatus");
+        const auto& loginStatus = payload.at("loginStatus");
+        if (loginStatus.contains("reason") && loginStatus.at("reason").is_string()) {
+            out["reason"] = loginStatus.at("reason").get<std::string>();
+        }
+    }
+
+    out["recoveryHint"] =
+        "Bu site icin once recoveryCommand'i ShellTool ile calistir; kullanici manuel girisi tamamlayinca ayni WebBrowserTool cagrisini tekrar dene.";
+    return out;
 }
 
 CommandExecution RunCommand(const std::string& command, const std::string& stage) {
@@ -528,11 +580,16 @@ WebBrowserTool::WebBrowserTool(const AppConfig& config, const AccountStore* acco
       promptTimeoutSeconds_(config.browserPromptTimeoutSeconds > 0 ? config.browserPromptTimeoutSeconds : 180),
       definition_({
           "WebBrowserTool",
-          "Playwright ile gercek bir Chromium sayfasi acar; gitme, tiklama, yazma, bekleme, ekran goruntusu alma ve metin okuma gibi cok adimli web islemleri yapar. accountId verilirse o hesabin kalici Chromium profili acilir; oturum yoksa kullaniciya gorunur bir pencere acilip oturum acmasi (ve gerekirse 2FA tamamlamasi) istenir, sonraki cagrilarda oturum hazirdir. useChromeProfile=true verildiginde sistem Chrome'u kullanicinin profili (izole bir kopyaya alinarak) uzerinden CDP ile surulur.",
+          "Playwright ile gercek bir Chromium sayfasi acar; gitme, tiklama, yazma, bekleme, ekran goruntusu alma ve metin okuma gibi cok adimli web islemleri yapar. accountId verilirse o hesabin kalici Chromium profili acilir; oturum yoksa kullaniciya gorunur bir pencere acilip oturum acmasi (ve gerekirse 2FA tamamlamasi) istenir, sonraki cagrilarda oturum hazirdir. account.json'da olmayan siteler icin sessionId + sessionLoginUrl/sessionLoggedInUrl verilerek ayni mantikta kalici bir site oturumu da tutulabilir. useChromeProfile=true verildiginde sistem Chrome'u kullanicinin profili (izole bir kopyaya alinarak) uzerinden CDP ile surulur.",
           {
               {"type", "object"},
               {"properties", {
                   {"accountId", {{"type", "string"}, {"description", "account.json icindeki hesap kimligi. Verildiginde tool o hesabin kalici Chromium profilini kullanir; oturum yoksa kullanicidan gorunur pencerede oturum acmasi istenir."}}},
+                  {"sessionId", {{"type", "string"}, {"description", "account.json disindaki bir site icin kalici login oturumu kimligi. Ornek: 'vapi_main'. sessionLoginUrl/sessionLoggedInUrl ile birlikte kullanilir."}}},
+                  {"sessionDisplayName", {{"type", "string"}, {"description", "Kullaniciya gosterilecek site/hesap adi. Ornek: 'Vapi.ai'."}}},
+                  {"sessionLoginUrl", {{"type", "string"}, {"description", "Manuel giriste acilacak login URL'si."}}},
+                  {"sessionLoggedInUrl", {{"type", "string"}, {"description", "Oturum acik kontrolu icin gidilecek URL. Genelde dashboard/home sayfasi."}}},
+                  {"sessionLoginCheckSelector", {{"type", "string"}, {"description", "Opsiyonel login kontrol selector'u. Bilinmiyorsa bos birakilabilir."}}},
                   {"steps", {
                       {"type", "array"},
                       {"description", "Her biri 'action' alanli web adimlari. Action: goto, click, click_first, click_close, dismiss_popups, type, fill, press, hover, wait_for_selector, wait_for_clickable, wait_for_load_state, wait_for_timeout, extract_text, extract_attribute, snapshot, screenshot, select, evaluate, mouse_click, keyboard_press, scroll. Locator icin selector / role+name / textSelector / label / placeholder / altText / titleSelector kullanilabilir; ayrica selectors dizisi ile fallback verilebilir. force, delayMs, timeoutMs, requireSuccess gibi alanlar opsiyoneldir. goto adiminda cerez/popup pencereleri otomatik kapatilir (dismissPopups=false ile devre disi birakilabilir); 'dismiss_popups' action'u ile manuel olarak da tetiklenebilir."}
@@ -624,10 +681,17 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
         {"useChromeProfile", useChromeProfile}
     };
 
+    const std::filesystem::path repoRoot = ResolveRepoRootFromRunner(runnerScriptPath_);
+
     // Account injection: when accountId is provided, look it up locally and
     // inject the persistent profile dir + a public-safe account record. The
     // LLM cannot override these values directly.
     std::string resolvedAccountId;
+    std::string resolvedSessionId;
+    std::string resolvedSessionDisplayName;
+    std::string resolvedSessionLoginUrl;
+    std::string resolvedSessionLoggedInUrl;
+    std::string resolvedSessionLoginCheckSelector;
     bool accountInjected = false;
     if (call.arguments.contains("accountId") && call.arguments.at("accountId").is_string()) {
         const std::string accountId = Trim(call.arguments.at("accountId").get<std::string>());
@@ -673,6 +737,58 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
             resolvedAccountId = record->id;
             accountInjected = true;
             LogBrowserMessage("execute", "accountId=" + accountId + " profileDir=" + record->profileDir.string());
+        }
+    }
+    if (!accountInjected && call.arguments.contains("sessionId") && call.arguments.at("sessionId").is_string()) {
+        const std::string sessionId = Trim(call.arguments.at("sessionId").get<std::string>());
+        const std::string sessionLoginUrl = Trim(call.arguments.value("sessionLoginUrl", ""));
+        const std::string sessionLoggedInUrl = Trim(call.arguments.value("sessionLoggedInUrl", ""));
+        const std::string sessionDisplayName = Trim(call.arguments.value("sessionDisplayName", sessionId));
+        const std::string sessionLoginCheckSelector = Trim(call.arguments.value("sessionLoginCheckSelector", ""));
+
+        if (!sessionId.empty()) {
+            if (sessionLoginUrl.empty() || sessionLoggedInUrl.empty()) {
+                return ToolResult{
+                    false,
+                    false,
+                    "sessionId kullaniliyorsa sessionLoginUrl ve sessionLoggedInUrl gerekli.",
+                    {{"reason", "missing_session_login_fields"}, {"sessionId", sessionId}}
+                };
+            }
+
+            std::filesystem::path sessionProfileDir = repoRoot / ".voice_agent_browser" / "sessions" / sessionId;
+            std::error_code profileError;
+            std::filesystem::create_directories(sessionProfileDir, profileError);
+            if (profileError) {
+                return ToolResult{
+                    false,
+                    false,
+                    "Site oturum profil klasoru olusturulamadi.",
+                    {{"reason", "create_session_profile_failed"},
+                     {"sessionId", sessionId},
+                     {"profileDir", sessionProfileDir.string()},
+                     {"details", profileError.message()}}
+                };
+            }
+
+            config["accountProfileDir"] = sessionProfileDir.string();
+            config["account"] = {
+                {"id", sessionId},
+                {"displayName", sessionDisplayName.empty() ? sessionId : sessionDisplayName},
+                {"provider", "generic"},
+                {"loginUrl", sessionLoginUrl},
+                {"loggedInUrl", sessionLoggedInUrl},
+                {"loginCheckSelector", sessionLoginCheckSelector},
+                {"manualLoginTimeoutSeconds", promptTimeoutSeconds_},
+            };
+
+            resolvedSessionId = sessionId;
+            resolvedSessionDisplayName = sessionDisplayName.empty() ? sessionId : sessionDisplayName;
+            resolvedSessionLoginUrl = sessionLoginUrl;
+            resolvedSessionLoggedInUrl = sessionLoggedInUrl;
+            resolvedSessionLoginCheckSelector = sessionLoginCheckSelector;
+            accountInjected = true;
+            LogBrowserMessage("execute", "sessionId=" + sessionId + " profileDir=" + sessionProfileDir.string());
         }
     }
 
@@ -742,12 +858,30 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
                     artifactsPath, venvPath, pythonExecutable, call.arguments
                 );
             }
-            if (accountInjected && payload.contains("loginStatus") && payload.at("loginStatus").is_object()) {
+            if (!resolvedAccountId.empty() && payload.contains("loginStatus") && payload.at("loginStatus").is_object()) {
                 return ToolResult{
                     false,
                     false,
                     payload.value("error", "Hesap oturumu dogrulanamadi."),
                     BuildAccountRecoveryOutput(payload, resolvedAccountId, runCommand, runResult.exitCode)
+                };
+            }
+            if (!resolvedSessionId.empty() && payload.contains("loginStatus") && payload.at("loginStatus").is_object()) {
+                return ToolResult{
+                    false,
+                    false,
+                    payload.value("error", "Site oturumu dogrulanamadi."),
+                    BuildSessionRecoveryOutput(
+                        payload,
+                        resolvedSessionId,
+                        resolvedSessionDisplayName,
+                        resolvedSessionLoginUrl,
+                        resolvedSessionLoggedInUrl,
+                        resolvedSessionLoginCheckSelector,
+                        repoRoot,
+                        runCommand,
+                        runResult.exitCode
+                    )
                 };
             }
             return ToolResult{
@@ -813,8 +947,18 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
             {"pythonExecutable", pythonExecutable}
         }
     };
-    if (accountInjected) {
+    if (!resolvedAccountId.empty()) {
         result.output["accountId"] = resolvedAccountId;
+        if (payload.contains("loginStatus")) {
+            result.output["loginStatus"] = payload.at("loginStatus");
+        }
+    }
+    if (!resolvedSessionId.empty()) {
+        result.output["sessionId"] = resolvedSessionId;
+        result.output["sessionDisplayName"] = resolvedSessionDisplayName;
+        result.output["sessionLoginUrl"] = resolvedSessionLoginUrl;
+        result.output["sessionLoggedInUrl"] = resolvedSessionLoggedInUrl;
+        result.output["sessionLoginCheckSelector"] = resolvedSessionLoginCheckSelector;
         if (payload.contains("loginStatus")) {
             result.output["loginStatus"] = payload.at("loginStatus");
         }

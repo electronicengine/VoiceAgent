@@ -7,6 +7,7 @@ ACCOUNT_ID=${1:-}
 DISPLAY_NUM=${DISPLAY_NUM:-99}
 NOVNC_PORT=${NOVNC_PORT:-6080}
 KEEP_NOVNC=${KEEP_NOVNC:-0}
+NOVNC_PUBLIC=${NOVNC_PUBLIC:-1}
 STARTED_NOVNC=0
 
 usage() {
@@ -25,6 +26,7 @@ Ornekler:
 Opsiyonel ortam degiskenleri:
   DISPLAY_NUM=99
   NOVNC_PORT=6080
+    NOVNC_PUBLIC=1   # noVNC'yi ayni agda dogrudan yayinla (varsayilan)
   KEEP_NOVNC=1    # script bitince noVNC'yi kapatma
 EOF
 }
@@ -50,18 +52,23 @@ fi
 
 if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
     echo "[account-login] DISPLAY yok; noVNC sanal masaustu baslatiliyor..."
-    DISPLAY_NUM="${DISPLAY_NUM}" NOVNC_PORT="${NOVNC_PORT}" bash "${REPO_ROOT}/scripts/novnc-up.sh"
+    DISPLAY_NUM="${DISPLAY_NUM}" NOVNC_PORT="${NOVNC_PORT}" NOVNC_PUBLIC="${NOVNC_PUBLIC}" bash "${REPO_ROOT}/scripts/novnc-up.sh"
     export DISPLAY=":${DISPLAY_NUM}"
     STARTED_NOVNC=1
 
     ROBOT_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     ROBOT_IP=${ROBOT_IP:-<robot-ip>}
     echo
-    echo "[account-login] Laptop'tan baglanmak icin ayri terminalde:"
-    echo "  ssh -L ${NOVNC_PORT}:localhost:${NOVNC_PORT} ${USER}@${ROBOT_IP}"
-    echo
-    echo "[account-login] Sonra laptop tarayicisinda:"
-    echo "  http://localhost:${NOVNC_PORT}/vnc.html"
+    if [[ "${NOVNC_PUBLIC}" == "1" ]]; then
+        echo "[account-login] Tarayicida dogrudan ac:"
+        echo "  http://${ROBOT_IP}:${NOVNC_PORT}/vnc.html"
+    else
+        echo "[account-login] Laptop'tan baglanmak icin ayri terminalde:"
+        echo "  ssh -L ${NOVNC_PORT}:localhost:${NOVNC_PORT} ${USER}@${ROBOT_IP}"
+        echo
+        echo "[account-login] Sonra laptop tarayicisinda:"
+        echo "  http://localhost:${NOVNC_PORT}/vnc.html"
+    fi
     echo
 fi
 

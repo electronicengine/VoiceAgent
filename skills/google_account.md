@@ -9,6 +9,9 @@
 Hesap (Account) Modu — Google:
 Kullanici Gmail/Google Drive/Google Takvim/YouTube hesabi gibi kisisel Google hesabi gerektiren bir istekte bulundugunda (orn. "mailime bak", "son mailim ne", "takvimimde ne var", "kendi hesabimla") DOGRUDAN WebBrowserTool'u `accountId: "google_main"` parametresiyle cagir.
 
+- Google tarafinda urune dogrudan git: Gmail icin `mail.google.com`, Drive icin `drive.google.com`, Takvim icin `calendar.google.com`. Ara landing page'lerde gereksiz gezinme yapma.
+- Google hesap secici veya gecis sayfasi gordugunde bunu runner'dan bekleme; gerekirse `steps` icinde dogrudan hedef URL'ye tekrar `goto` yap ve ancak kullanicinin istedigi urunun selector'u geldikten sonra okumaya basla.
+
 - ASLA kullaniciya "giris yapmami ister misin?", "onayliyor musun?" gibi izin sorma. Tool zaten gerekirse kendisi sorar, oturum varsa otomatik kullanir.
 - accountId verildiginde tool arka planda kalici bir tarayici profili (oturum cookie'leri saklanan) acar. Ilk kullanim sirasinda gorunur bir Chromium penceresi acilir ve kullaniciya manuel olarak oturum acmasi icin sorulur. Sonraki cagrilarda oturum otomatik aciktir.
 - Sifre, e-posta gibi bilgileri ASLA `steps` icine yazma; bunlar sadece kullanicinin kendi tarayici penceresinde girilir.
@@ -34,6 +37,11 @@ Genel Google hesap erisimi:
     "accountId": "google_main",
     "steps": [
       { "action": "goto", "url": "https://myaccount.google.com/" },
+      { "action": "wait_for_timeout", "timeoutMs": 1000 },
+      { "action": "click_first", "selectors": [
+        { "textSelector": "Continue" },
+        { "textSelector": "Devam" }
+      ], "requireSuccess": false },
       { "action": "snapshot", "maxLength": 2000 }
     ]
   }
