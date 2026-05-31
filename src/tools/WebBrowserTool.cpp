@@ -35,6 +35,34 @@ struct CommandExecution {
     std::string output;
 };
 
+nlohmann::json BuildAccountRecoveryOutput(const nlohmann::json& payload,
+                                         const std::string& accountId,
+                                         const std::string& runCommand,
+                                         int exitCode) {
+    nlohmann::json out = {
+        {"stage", "run_browser_script"},
+        {"command", runCommand},
+        {"exitCode", exitCode},
+        {"output", payload},
+        {"accountId", accountId},
+        {"reason", "account_login_required"},
+        {"recoveryCommand",
+         std::string("cd /home/kufi/workspace/voiceAgent && KEEP_NOVNC=1 bash scripts/account-login.sh ") + accountId}
+    };
+
+    if (payload.contains("loginStatus") && payload.at("loginStatus").is_object()) {
+        out["loginStatus"] = payload.at("loginStatus");
+        const auto& loginStatus = payload.at("loginStatus");
+        if (loginStatus.contains("reason") && loginStatus.at("reason").is_string()) {
+            out["reason"] = loginStatus.at("reason").get<std::string>();
+        }
+    }
+
+    out["recoveryHint"] =
+        "Bu hesap icin once recoveryCommand'i ShellTool ile calistir; kullanici manuel girisi tamamlayinca ayni WebBrowserTool cagrisini tekrar dene.";
+    return out;
+}
+
 void LogBrowserMessage(const std::string& stage, const std::string& message) {
     std::cout << "[WebBrowserTool][" << stage << "] " << message << "\n";
     std::cout.flush();
@@ -713,6 +741,14 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
                     payload, runCommand, runResult.exitCode,
                     artifactsPath, venvPath, pythonExecutable, call.arguments
                 );
+            }
+            if (accountInjected && payload.contains("loginStatus") && payload.at("loginStatus").is_object()) {
+                return ToolResult{
+                    false,
+                    false,
+                    payload.value("error", "Hesap oturumu dogrulanamadi."),
+                    BuildAccountRecoveryOutput(payload, resolvedAccountId, runCommand, runResult.exitCode)
+                };
             }
             return ToolResult{
                 false,

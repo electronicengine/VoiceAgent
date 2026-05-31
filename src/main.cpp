@@ -51,8 +51,7 @@ std::string BuildSystemPrompt(
     std::ostringstream prompt;
     prompt << "* En fazla " << maxAgentSteps << " adimda sonuca git." << "\n\n";
     prompt << staticPromptText << "\n\n";
-    prompt << "Kullanilabilir araclar:\n";
-    prompt << toolList.dump(2) << "\n\n";
+
     if (!skillIndex.empty()) {
         prompt << "## Skill Index\n";
         prompt << "Asagidaki skill'lerin detayli kullanim talimatlari, kullanici girdisi "

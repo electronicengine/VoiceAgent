@@ -217,6 +217,39 @@ def shorten(text, limit=4000):
     return text[:limit] + "\n[truncated]"
 
 
+def describe_spec(spec):
+    if spec.get("selector"):
+        return f"selector={spec['selector']}"
+    if spec.get("role"):
+        name = spec.get("name")
+        return f"role={spec['role']} name={name}" if name is not None else f"role={spec['role']}"
+    for key in ("textSelector", "label", "placeholder", "altText", "titleSelector"):
+        if spec.get(key):
+            return f"{key}={spec[key]}"
+    return str(spec)
+
+
+async def snapshot_page_state(page):
+    try:
+        title = await page.title()
+    except Exception:
+        title = ""
+    try:
+        url = page.url
+    except Exception:
+        url = ""
+    try:
+        body_text = await page.locator("body").inner_text()
+        body_preview = shorten(body_text, 300).replace("\n", " | ")
+    except Exception:
+        body_preview = ""
+    return {
+        "url": url,
+        "title": title,
+        "bodyPreview": body_preview,
+    }
+
+
 def _build_locator(page, spec):
     if spec.get("selector"):
         return page.locator(spec["selector"])
@@ -276,16 +309,21 @@ def maybe_locator(page, step):
 
 async def click_first(page, specs, *, force=False, timeout=3000, delay=50):
     for spec in specs:
+        spec_desc = describe_spec(spec)
         try:
             loc = _build_locator(page, spec).first
         except Exception:
+            log(f"click_first: invalid locator spec: {spec_desc}")
             continue
         try:
             if await loc.count() == 0:
+                log(f"click_first: no match for {spec_desc}")
                 continue
             await loc.click(timeout=timeout, force=force, delay=delay)
+            log(f"click_first: clicked {spec_desc} force={force} timeout={timeout}")
             return True
-        except Exception:
+        except Exception as exc:
+            log(f"click_first: failed {spec_desc}: {exc}")
             continue
     return False
 
@@ -294,6 +332,7 @@ async def wait_for_clickable(page, specs, timeout=8000):
     deadline = asyncio.get_running_loop().time() + (timeout / 1000)
     while asyncio.get_running_loop().time() < deadline:
         for spec in specs:
+            spec_desc = describe_spec(spec)
             try:
                 loc = _build_locator(page, spec).first
                 if await loc.count() == 0:
@@ -303,6 +342,7 @@ async def wait_for_clickable(page, specs, timeout=8000):
                 disabled = await loc.get_attribute("disabled")
                 aria_disabled = await loc.get_attribute("aria-disabled")
                 if disabled is None and aria_disabled not in {"true", "True"}:
+                    log(f"wait_for_clickable: ready {spec_desc}")
                     return True
             except Exception:
                 continue
@@ -381,8 +421,82 @@ DISMISS_TEXT_PATTERNS = [
     "daha sonra", "şimdi değil", "simdi degil", "vazgeç", "vazgec",
     "kapat", "hayır", "hayir", "reddet",
     "not now", "no thanks", "maybe later", "later", "decline",
-    "dismiss", "close", "skip",
+    "dismiss", "close",
 ]
+
+ACCESSIBILITY_CONTROL_PATTERNS = [
+    "skip to ",
+    "skip navigation",
+    "skip content",
+    "main content",
+    "primary content",
+    "sidebar",
+    "search",
+    "jump menu",
+]
+
+
+def is_accessibility_control_text(text):
+    normalized = (text or "").strip().casefold()
+    if not normalized:
+        return False
+    if normalized.startswith("skip to "):
+        return True
+    return any(pattern in normalized for pattern in ACCESSIBILITY_CONTROL_PATTERNS)
+
+
+async def any_selector_visible(page, selector_list, timeout_ms=4000):
+    selectors = [selector.strip() for selector in (selector_list or "").split(",") if selector.strip()]
+    if not selectors:
+        return False, ""
+
+    deadline = asyncio.get_running_loop().time() + (timeout_ms / 1000)
+    while asyncio.get_running_loop().time() < deadline:
+        for selector in selectors:
+            try:
+                locator = page.locator(selector)
+                count = await locator.count()
+                if count == 0:
+                    continue
+                for index in range(min(count, 5)):
+                    candidate = locator.nth(index)
+                    if await candidate.is_visible():
+                        return True, selector
+            except Exception:
+                continue
+        await page.wait_for_timeout(200)
+    return False, ""
+
+
+def is_probable_linkedin_logged_in_page(page_title, page_text, page_url):
+    title = (page_title or "").casefold()
+    text = (page_text or "").casefold()
+    url = (page_url or "").casefold()
+
+    if "linkedin.com" not in url:
+        return False
+
+    logged_out_signals = [
+        "sign in",
+        "join now",
+        "oturum aç",
+        "giriş yap",
+        "kaydol",
+        "forgot password",
+    ]
+    if any(signal in text or signal in title for signal in logged_out_signals):
+        return False
+
+    shell_signals = [
+        "feed | linkedin",
+        "notifications | linkedin",
+        "messaging | linkedin",
+        "my network",
+        "messaging",
+        "notifications",
+        "for business",
+    ]
+    return sum(1 for signal in shell_signals if signal in title or signal in text) >= 2
 
 
 async def _click_buttons_matching_text(page, patterns, timeout_ms=1500):
@@ -404,8 +518,12 @@ async def _click_buttons_matching_text(page, patterns, timeout_ms=1500):
                     text = (await handle.inner_text() or "").strip().casefold()
                     if not text or len(text) > 80:
                         continue
+                    if is_accessibility_control_text(text):
+                        log(f"overlay ignore accessibility control text='{text}'")
+                        continue
                     if not any(p in text for p in patterns):
                         continue
+                    log(f"overlay match text='{text}' patterns={patterns[:4]}...")
                     try:
                         await handle.click(timeout=timeout_ms, no_wait_after=True)
                     except Exception:
@@ -414,6 +532,11 @@ async def _click_buttons_matching_text(page, patterns, timeout_ms=1500):
                         except Exception:
                             continue
                     clicked_any = True
+                    try:
+                        current_url = page.url
+                    except Exception:
+                        current_url = ""
+                    log(f"overlay clicked text='{text}' url={current_url}")
                     await asyncio.sleep(0.15)
                 except Exception:
                     continue
@@ -438,6 +561,11 @@ async def _click_consent_selector_hints(page, timeout_ms=800):
                     except Exception:
                         await locator.click(timeout=timeout_ms, force=True, no_wait_after=True)
                     clicked_any = True
+                    try:
+                        current_url = page.url
+                    except Exception:
+                        current_url = ""
+                    log(f"overlay clicked selector hint='{selector}' url={current_url}")
                     await asyncio.sleep(0.15)
                     break
                 except Exception:
@@ -480,6 +608,22 @@ async def dismiss_overlays(page, max_passes=3):
     return dismissed
 
 
+async def recover_linkedin_interstitial(page):
+    """LinkedIn sometimes opens a restore/ad-style interstitial page for logged-in
+    sessions. These pages are not a real login wall, but they hide the regular
+    global nav so a strict login selector check would look like a logged-out
+    state. Try to get back to the normal app shell before declaring failure."""
+    patterns = [
+        "back to linkedin", "back to linkein", "restore",
+        "geri don", "geri dön", "continue to linkedin",
+    ]
+    clicked = await _click_buttons_matching_text(page, patterns, timeout_ms=1200)
+    if clicked:
+        await asyncio.sleep(1.0)
+        return True
+    return False
+
+
 def detect_bot_challenge(page_title, page_text, page_url):
     title = (page_title or "").strip().lower()
     text = (page_text or "").strip().lower()
@@ -508,8 +652,19 @@ async def execute_step(page, step, index, artifacts_dir):
     log(f"step {index + 1} action={action}")
     entry = {"index": index, "action": action}
     specs = _step_to_specs(step)
+    if specs:
+        entry["locatorCandidates"] = [describe_spec(spec) for spec in specs]
+        log(f"step {index + 1} locator candidates: {' || '.join(entry['locatorCandidates'])}")
+
+    before = await snapshot_page_state(page)
+    entry["before"] = before
+    log(
+        f"step {index + 1} before url={before['url']} title={before['title']} "
+        f"body={before['bodyPreview']}"
+    )
 
     if action in ("goto", "navigate"):
+        log(f"step {index + 1} goto target={step['url']}")
         response = await page.goto(step["url"], wait_until=step.get("waitUntil", "domcontentloaded"))
         if step.get("loadState"):
             await page.wait_for_load_state(step["loadState"])
@@ -612,6 +767,7 @@ async def execute_step(page, step, index, artifacts_dir):
             entry["text"] = shorten("\n---\n".join(t for t in texts if t), int(step.get("maxLength", 4000)))
         else:
             entry["text"] = shorten(await loc.first.inner_text(), int(step.get("maxLength", 4000)))
+        log(f"step {index + 1} extract_text preview={shorten(entry['text'], 300).replace(chr(10), ' | ')}")
     elif action == "extract_attribute":
         loc = resolve_locator(page, step)
         entry["value"] = await loc.get_attribute(step.get("attribute", "value"))
@@ -668,6 +824,12 @@ async def execute_step(page, step, index, artifacts_dir):
         entry["title"] = await page.title()
     except Exception:
         pass
+    after = await snapshot_page_state(page)
+    entry["after"] = after
+    log(
+        f"step {index + 1} after url={after['url']} title={after['title']} "
+        f"body={after['bodyPreview']}"
+    )
     log(f"finished step {index + 1} action={action}")
     return entry
 
@@ -691,8 +853,13 @@ async def is_logged_in(page, account):
 
     selector = (account.get("loginCheckSelector") or "").strip()
     target_url = (account.get("loggedInUrl") or "").strip()
+    provider = (account.get("provider") or "").strip().lower()
     if not target_url:
         return False
+    log(
+        f"is_logged_in: account={account.get('id')} provider={provider} "
+        f"target_url={target_url} selector={selector}"
+    )
     try:
         await page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
     except Exception as exc:
@@ -705,6 +872,19 @@ async def is_logged_in(page, account):
 
     target_host = (urlparse(target_url).netloc or "").lower()
     current_host = (urlparse(page.url).netloc or "").lower()
+    try:
+        title = await page.title()
+    except Exception:
+        title = ""
+    try:
+        body_text = await page.locator("body").inner_text()
+    except Exception:
+        body_text = ""
+    body_preview = shorten(body_text, 250).replace("\n", " | ")
+    log(
+        f"is_logged_in: current_url={page.url} current_host={current_host} "
+        f"target_host={target_host} title={title} body={body_preview}"
+    )
     if target_host and current_host and target_host != current_host:
         log(f"is_logged_in: redirected to {current_host} (expected {target_host}); not logged in")
         return False
@@ -713,13 +893,33 @@ async def is_logged_in(page, account):
         log(f"is_logged_in: no selector, host matches ({current_host}); assuming logged in")
         return True
 
-    try:
-        loc = page.locator(selector).first
-        await loc.wait_for(state="visible", timeout=4000)
+    matched, matched_selector = await any_selector_visible(page, selector, timeout_ms=4000)
+    if matched:
+        log(f"is_logged_in: selector matched ({matched_selector}); treating as logged in")
         return True
-    except Exception:
-        log(f"is_logged_in: selector miss on {current_host}; host matches target so treating as logged in")
+
+    if provider == "linkedin" and is_probable_linkedin_logged_in_page(title, body_text, page.url):
+        log("is_logged_in: linkedin app shell detected without selector match; treating as logged in")
         return True
+
+    if provider == "linkedin":
+        try:
+            recovered = await recover_linkedin_interstitial(page)
+        except Exception:
+            recovered = False
+        if recovered:
+            log("is_logged_in: linkedin interstitial recovery clicked; retrying selector check")
+            try:
+                await dismiss_overlays(page, max_passes=2)
+            except Exception:
+                pass
+            matched, matched_selector = await any_selector_visible(page, selector, timeout_ms=4000)
+            if matched:
+                log(f"is_logged_in: linkedin interstitial recovered via {matched_selector}; treating as logged in")
+                return True
+
+    log(f"is_logged_in: selector miss on {current_host}; treating as not logged in")
+    return False
 
 
 async def perform_manual_login(page, account):
@@ -738,6 +938,19 @@ async def perform_manual_login(page, account):
         pass
 
     timeout_seconds = int(account.get("manualLoginTimeoutSeconds", 240))
+    auto_wait = bool(os.environ.get("VOICE_AGENT_AUTO_LOGIN"))
+    if auto_wait:
+        log(
+            f"auto login wait enabled; polling up to {timeout_seconds}s for "
+            f"account '{account.get('id')}'"
+        )
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if await is_logged_in(page, account):
+                return True
+            await asyncio.sleep(2)
+        return False
+
     question = (
         f"{display_name} icin tarayici penceresi acildi. Lutfen oturum acin"
         " (gerekirse iki adimli dogrulamayi tamamlayin) ve hazir oldugunuzda"
