@@ -621,7 +621,7 @@ WebBrowserTool::WebBrowserTool(const AppConfig& config,
       promptTimeoutSeconds_(config.browserPromptTimeoutSeconds > 0 ? config.browserPromptTimeoutSeconds : 180),
       definition_({
           "WebBrowserTool",
-          "Playwright ile gercek bir Chromium sayfasi acar; gitme, tiklama, yazma, bekleme, ekran goruntusu alma ve metin okuma gibi cok adimli web islemleri yapar. accountId verilirse o hesabin kalici Chromium profili acilir; oturum yoksa kullaniciya gorunur bir pencere acilip oturum acmasi (ve gerekirse 2FA tamamlamasi) istenir, sonraki cagrilarda oturum hazirdir. account.json'da olmayan siteler icin sessionId + sessionLoginUrl/sessionLoggedInUrl verilerek ayni mantikta kalici bir site oturumu da tutulabilir. useChromeProfile=true verildiginde sistem Chrome'u kullanicinin profili (izole bir kopyaya alinarak) uzerinden CDP ile surulur.",
+          "Playwright ile gercek bir Chromium sayfasi acar; gitme, tiklama, yazma, bekleme, ekran goruntusu alma ve metin okuma gibi cok adimli web islemleri yapar. accountId verilirse o hesabin kalici Chromium profili acilir; oturum yoksa kullaniciya gorunur bir pencere acilip oturum acmasi (ve gerekirse 2FA tamamlamasi) istenir, sonraki cagrilarda oturum hazirdir. account.json'da olmayan siteler icin sessionId + sessionLoginUrl/sessionLoggedInUrl verilerek ayni mantikta kalici bir site oturumu da tutulabilir. useChromeProfile=true verildiginde sistem Chrome'u --remote-debugging-port ile surer; varsayilan akista profil izole bir kopyaya alinir, chromeProfileDirectMode=true ise dogrudan gercek Chrome profili kullanilir.",
           {
               {"type", "object"},
               {"properties", {
@@ -645,11 +645,12 @@ WebBrowserTool::WebBrowserTool(const AppConfig& config,
                   {"viewportHeight", {{"type", "integer"}}},
                   {"locale", {{"type", "string"}}},
                   {"visionDetail", {{"type", "string"}}},
-                  {"useChromeProfile", {{"type", "boolean"}, {"description", "true ise sistem Chrome'u --remote-debugging-port ile baslatilip CDP uzerinden baglanir; gercek kullanici profili izole bir kopyaya alinarak kullanilir."}}},
+                  {"useChromeProfile", {{"type", "boolean"}, {"description", "true ise sistem Chrome'u --remote-debugging-port ile baslatilip CDP uzerinden baglanir; varsayilan olarak profil izole bir kopyaya alinir."}}},
                   {"chromeExecutablePath", {{"type", "string"}}},
                   {"chromeUserDataDir", {{"type", "string"}, {"description", "Kaynak Chrome user-data klasoru."}}},
                   {"chromeProfileName", {{"type", "string"}, {"description", "Hedef profilin gorunen adi (orn: 'Yusuf - Kisi 2'); profile_dir bulmak icin ipucu."}}},
                   {"chromeProfileDir", {{"type", "string"}, {"description", "Profil klasoru adi (Default, Profile 1, ...)."}}},
+                  {"chromeProfileDirectMode", {{"type", "boolean"}, {"description", "true ise izole kopya olusturulmadan dogrudan gercek Chrome user-data-dir + profile-directory kullanilir. Chrome kapali olmalidir."}}},
                   {"automationUserDataDir", {{"type", "string"}, {"description", "Profilin kopyalanacagi izole klasor."}}},
                   {"chromeDebugPort", {{"type", "integer"}, {"description", "0 / verilmezse otomatik bos port."}}},
                   {"refreshProfileCopy", {{"type", "boolean"}}},
@@ -752,18 +753,6 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
                     {{"reason", "unknown_account"}, {"accountId", accountId}}
                 };
             }
-            std::error_code profileError;
-            std::filesystem::create_directories(record->profileDir, profileError);
-            if (profileError) {
-                return ToolResult{
-                    false, false,
-                    "Hesap profil klasoru olusturulamadi.",
-                    {{"reason", "create_account_profile_failed"},
-                     {"accountId", accountId},
-                     {"profileDir", record->profileDir.string()},
-                     {"details", profileError.message()}}
-                };
-            }
             const AccountLoginConfig loginConfig = ResolveAccountLoginConfig(*record, skillRegistry_);
             if (loginConfig.loginUrl.empty() || loginConfig.loggedInUrl.empty()) {
                 return ToolResult{
@@ -773,11 +762,38 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
                     {{"reason", "missing_account_login_metadata"}, {"accountId", accountId}}
                 };
             }
-            config["accountProfileDir"] = record->profileDir.string();
+
+            if (record->browserProfileMode == kBrowserProfileModeSystemChrome) {
+                config["useChromeProfile"] = true;
+                config["chromeProfileDirectMode"] = true;
+                config["chromeRequireClosed"] = record->requireChromeClosed;
+                if (!record->chromeUserDataDir.empty()) {
+                    config["chromeUserDataDir"] = record->chromeUserDataDir.string();
+                }
+                if (!record->chromeProfileDir.empty()) {
+                    config["chromeProfileDir"] = record->chromeProfileDir;
+                }
+                if (!record->chromeProfileName.empty()) {
+                    config["chromeProfileName"] = record->chromeProfileName;
+                }
+            } else {
+                std::error_code profileError;
+                std::filesystem::create_directories(record->profileDir, profileError);
+                if (profileError) {
+                    return ToolResult{
+                        false, false,
+                        "Hesap profil klasoru olusturulamadi.",
+                        {{"reason", "create_account_profile_failed"},
+                         {"accountId", accountId},
+                         {"profileDir", record->profileDir.string()},
+                         {"details", profileError.message()}}
+                    };
+                }
+                config["accountProfileDir"] = record->profileDir.string();
+            }
             config["account"] = {
                 {"id", record->id},
                 {"displayName", record->displayName},
-                {"provider", record->provider},
                 {"loginUrl", loginConfig.loginUrl},
                 {"loggedInUrl", loginConfig.loggedInUrl},
                 {"loginCheckSelector", loginConfig.loginCheckSelector},
@@ -786,7 +802,13 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
             // headless'i runner DISPLAY varligina gore karar verir; burada zorlama yok.
             resolvedAccountId = record->id;
             accountInjected = true;
-            LogBrowserMessage("execute", "accountId=" + accountId + " profileDir=" + record->profileDir.string());
+            LogBrowserMessage(
+                "execute",
+                "accountId=" + accountId +
+                    " browserProfileMode=" + record->browserProfileMode +
+                    " profileDir=" + record->profileDir.string() +
+                    " chromeProfileDir=" + record->chromeProfileDir
+            );
         }
     }
     if (!accountInjected && call.arguments.contains("sessionId") && call.arguments.at("sessionId").is_string()) {
@@ -795,6 +817,7 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
         const std::string sessionLoggedInUrl = Trim(call.arguments.value("sessionLoggedInUrl", ""));
         const std::string sessionDisplayName = Trim(call.arguments.value("sessionDisplayName", sessionId));
         const std::string sessionLoginCheckSelector = Trim(call.arguments.value("sessionLoginCheckSelector", ""));
+        const std::string sessionBrowserProfileId = Trim(call.arguments.value("sessionBrowserProfileId", ""));
 
         if (!sessionId.empty()) {
             if (sessionLoginUrl.empty() || sessionLoggedInUrl.empty()) {
@@ -806,22 +829,63 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
                 };
             }
 
-            std::filesystem::path sessionProfileDir = repoRoot / ".voice_agent_browser" / "sessions" / sessionId;
-            std::error_code profileError;
-            std::filesystem::create_directories(sessionProfileDir, profileError);
-            if (profileError) {
+            const auto resolveSessionBrowserProfile = [&]() -> std::optional<BrowserProfileRecord> {
+                if (accountStore_ == nullptr || !accountStore_->Loaded()) {
+                    return std::nullopt;
+                }
+                if (!sessionBrowserProfileId.empty()) {
+                    return accountStore_->FindBrowserProfile(sessionBrowserProfileId);
+                }
+                return accountStore_->DefaultSessionBrowserProfile();
+            };
+
+            const std::optional<BrowserProfileRecord> sessionBrowserProfile = resolveSessionBrowserProfile();
+            if (!sessionBrowserProfileId.empty() && !sessionBrowserProfile.has_value()) {
                 return ToolResult{
                     false,
                     false,
-                    "Site oturum profil klasoru olusturulamadi.",
-                    {{"reason", "create_session_profile_failed"},
-                     {"sessionId", sessionId},
-                     {"profileDir", sessionProfileDir.string()},
-                     {"details", profileError.message()}}
+                    "Bilinmeyen sessionBrowserProfileId: " + sessionBrowserProfileId,
+                    {{"reason", "unknown_session_browser_profile"}, {"sessionId", sessionId}, {"browserProfileId", sessionBrowserProfileId}}
                 };
             }
 
-            config["accountProfileDir"] = sessionProfileDir.string();
+            if (sessionBrowserProfile.has_value() && sessionBrowserProfile->mode == kBrowserProfileModeSystemChrome) {
+                config["useChromeProfile"] = true;
+                config["chromeProfileDirectMode"] = true;
+                config["chromeRequireClosed"] = sessionBrowserProfile->requireChromeClosed;
+                if (!sessionBrowserProfile->chromeUserDataDir.empty()) {
+                    config["chromeUserDataDir"] = sessionBrowserProfile->chromeUserDataDir.string();
+                }
+                if (!sessionBrowserProfile->chromeProfileDir.empty()) {
+                    config["chromeProfileDir"] = sessionBrowserProfile->chromeProfileDir;
+                }
+                if (!sessionBrowserProfile->chromeProfileName.empty()) {
+                    config["chromeProfileName"] = sessionBrowserProfile->chromeProfileName;
+                }
+            } else {
+                std::filesystem::path sessionProfileDir;
+                if (sessionBrowserProfile.has_value()) {
+                    sessionProfileDir = sessionBrowserProfile->profileDir;
+                } else {
+                    sessionProfileDir = repoRoot / ".voice_agent_browser" / "sessions" / sessionId;
+                }
+
+                std::error_code profileError;
+                std::filesystem::create_directories(sessionProfileDir, profileError);
+                if (profileError) {
+                    return ToolResult{
+                        false,
+                        false,
+                        "Site oturum profil klasoru olusturulamadi.",
+                        {{"reason", "create_session_profile_failed"},
+                         {"sessionId", sessionId},
+                         {"profileDir", sessionProfileDir.string()},
+                         {"details", profileError.message()}}
+                    };
+                }
+
+                config["accountProfileDir"] = sessionProfileDir.string();
+            }
             config["account"] = {
                 {"id", sessionId},
                 {"displayName", sessionDisplayName.empty() ? sessionId : sessionDisplayName},
@@ -838,7 +902,12 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
             resolvedSessionLoggedInUrl = sessionLoggedInUrl;
             resolvedSessionLoginCheckSelector = sessionLoginCheckSelector;
             accountInjected = true;
-            LogBrowserMessage("execute", "sessionId=" + sessionId + " profileDir=" + sessionProfileDir.string());
+            LogBrowserMessage(
+                "execute",
+                "sessionId=" + sessionId +
+                    " sessionBrowserProfileId=" + (sessionBrowserProfileId.empty() ? std::string("<default>") : sessionBrowserProfileId) +
+                    " useChromeProfile=" + std::string(config.value("useChromeProfile", false) ? "true" : "false")
+            );
         }
     }
 
@@ -866,6 +935,12 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
     }
     if (call.arguments.contains("refreshProfileCopy") && call.arguments.at("refreshProfileCopy").is_boolean()) {
         config["refreshProfileCopy"] = call.arguments.at("refreshProfileCopy").get<bool>();
+    }
+    if (call.arguments.contains("chromeProfileDirectMode") && call.arguments.at("chromeProfileDirectMode").is_boolean()) {
+        config["chromeProfileDirectMode"] = call.arguments.at("chromeProfileDirectMode").get<bool>();
+    }
+    if (call.arguments.contains("chromeRequireClosed") && call.arguments.at("chromeRequireClosed").is_boolean()) {
+        config["chromeRequireClosed"] = call.arguments.at("chromeRequireClosed").get<bool>();
     }
 
     std::string userAgent;

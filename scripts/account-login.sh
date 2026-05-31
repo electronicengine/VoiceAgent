@@ -18,6 +18,11 @@ Bu komut, account.json icindeki HERHANGI bir hesap kimligi ile calisir.
 Yani google_main, linkedin_main, twitter_main, github_work gibi yeni eklenen
 hesaplar ayni onboarding akisini kullanir.
 
+Eger ust seviyede `defaultSessionBrowserProfileId` tanimliysa, giris ortak
+`system_chrome` profiline yazilir.
+Bu durumda agent'i
+kullanmadan once o Chrome profilinin kapali olmasi gerekir.
+
 Ornekler:
   scripts/account-login.sh google_main
   scripts/account-login.sh linkedin_main
@@ -28,6 +33,10 @@ Opsiyonel ortam degiskenleri:
   NOVNC_PORT=6080
     NOVNC_PUBLIC=1   # noVNC'yi ayni agda dogrudan yayinla (varsayilan)
   KEEP_NOVNC=1    # script bitince noVNC'yi kapatma
+
+Notlar:
+    - Hesaplar ortak profili sadece `defaultSessionBrowserProfileId` uzerinden alir.
+    - Bu alan yoksa hesap-ozel kalici profil dizini kullanilir.
 EOF
 }
 

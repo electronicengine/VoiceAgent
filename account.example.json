@@ -1,37 +1,21 @@
 {
   "_comment": "Bu dosyayi 'account.json' olarak kopyalayip kendi hesaplariniz icin doldurun. account.json gitignore'dadir; yanlislikla commit'lenmez.",
   "accountsRootDir": "",
+  "defaultSessionBrowserProfileId": "social_main",
+  "browserProfiles": {
+    "social_main": {
+      "mode": "system_chrome",
+      "chromeUserDataDir": "",
+      "chromeProfileDir": "",
+      "chromeProfileName": "",
+      "requireChromeClosed": true
+    }
+  },
   "accounts": {
-    "github_main": {
-      "displayName": "GitHub - Kisisel",
-      "provider": "github",
-      "email": "",
-      "password": "",
-      "profileDir": ""
-    },
-    "google_main": {
-      "displayName": "Google - Kisisel",
-      "provider": "google",
-      "email": "",
-      "password": "",
-      "profileDir": ""
-    },
-    "linkedin_main": {
-      "displayName": "LinkedIn - Kisisel",
-      "provider": "linkedin",
-      "email": "",
-      "password": "",
-      "profileDir": ""
-    },
     "twitter_main": {
-      "displayName": "X / Twitter - Kisisel",
-      "provider": "twitter",
       "loginUrl": "https://x.com/i/flow/login",
       "loggedInUrl": "https://x.com/home",
-      "loginCheckSelector": "a[data-testid='AppTabBar_Home_Link'], button[data-testid='SideNav_AccountSwitcher_Button']",
-      "email": "",
-      "password": "",
-      "profileDir": ""
+      "loginCheckSelector": "a[data-testid='AppTabBar_Home_Link'], button[data-testid='SideNav_AccountSwitcher_Button']"
     }
   }
 }
