@@ -100,18 +100,17 @@ int main() {
         auto interpreter = std::make_unique<voice_agent::OpenAiInterpreter>(config);
         voice_agent::ShellTool shellTool;
         voice_agent::PythonTool pythonTool;
-        voice_agent::WebBrowserTool webBrowserTool(config, &accountStore);
-        voice_agent::RememberTool rememberTool(
-            config.resolvedExperiencesFilePath,
-            config.maxExperienceLines
-        );
-
         voice_agent::SkillRegistry skillRegistry;
         if (config.skillsEnabled && !config.resolvedSkillsDir.empty()) {
             skillRegistry.Load(config.resolvedSkillsDir);
             std::cout << "Loaded " << skillRegistry.Skills().size()
                       << " skills from " << config.resolvedSkillsDir << "\n";
         }
+        voice_agent::WebBrowserTool webBrowserTool(config, &accountStore, &skillRegistry);
+        voice_agent::RememberTool rememberTool(
+            config.resolvedExperiencesFilePath,
+            config.maxExperienceLines
+        );
         if (!config.resolvedExperiencesFilePath.empty()) {
             std::cout << "Experiences file: " << config.resolvedExperiencesFilePath
                       << " (" << (config.experiencesText.empty() ? 0 : 1)

@@ -27,6 +27,48 @@ def resolve_relative(base: Path, configured: str) -> Path:
     return (base / path).resolve()
 
 
+def split_frontmatter(content: str):
+    lines = content.splitlines()
+    if not lines or trim(lines[0]) != "---":
+        return "", content
+
+    frontmatter_lines = []
+    for index in range(1, len(lines)):
+        if trim(lines[index]) == "---":
+            body = "\n".join(lines[index + 1:])
+            return "\n".join(frontmatter_lines), body
+        frontmatter_lines.append(lines[index])
+    return "", content
+
+
+def load_skill_account(repo_root: Path, account_id: str):
+    skills_dir = repo_root / "skills"
+    if not skills_dir.exists():
+        return {}
+
+    for skill_path in sorted(skills_dir.glob("*.md")):
+        try:
+            content = skill_path.read_text(encoding="utf-8")
+            frontmatter, _ = split_frontmatter(content)
+            if not frontmatter:
+                continue
+            meta = json.loads(frontmatter)
+        except Exception:
+            continue
+
+        account = meta.get("account") or {}
+        if trim(account.get("id", "")) != account_id:
+            continue
+
+        return {
+            "loginUrl": trim(account.get("loginUrl", "")),
+            "loggedInUrl": trim(account.get("loggedInUrl", "")),
+            "loginCheckSelector": trim(account.get("loginCheckSelector", "")),
+        }
+
+    return {}
+
+
 def load_account(repo_root: Path, account_id: str):
     accounts_file = repo_root / "account.json"
     if not accounts_file.exists():
@@ -44,19 +86,28 @@ def load_account(repo_root: Path, account_id: str):
         root_dir = (Path.home() / ".voice_agent_browser" / "profiles").resolve()
 
     record = accounts[account_id]
+    skill_account = load_skill_account(repo_root, account_id)
     configured_profile = trim(record.get("profileDir", ""))
     if configured_profile:
         profile_dir = resolve_relative(config_dir, configured_profile)
     else:
         profile_dir = (root_dir / account_id).resolve()
 
+    login_url = trim(skill_account.get("loginUrl", "")) or trim(record.get("loginUrl", ""))
+    logged_in_url = trim(skill_account.get("loggedInUrl", "")) or trim(record.get("loggedInUrl", "")) or login_url
+    login_check_selector = trim(skill_account.get("loginCheckSelector", "")) or trim(record.get("loginCheckSelector", ""))
+    if not login_url or not logged_in_url:
+        raise RuntimeError(
+            f"{account_id} icin login metadata eksik. Ilgili skill frontmatter'inda account.loginUrl ve account.loggedInUrl tanimlanmali."
+        )
+
     return {
         "id": account_id,
         "displayName": trim(record.get("displayName", "")) or account_id,
         "provider": trim(record.get("provider", "")).lower(),
-        "loginUrl": trim(record.get("loginUrl", "")),
-        "loggedInUrl": trim(record.get("loggedInUrl", "")),
-        "loginCheckSelector": trim(record.get("loginCheckSelector", "")),
+        "loginUrl": login_url,
+        "loggedInUrl": logged_in_url,
+        "loginCheckSelector": login_check_selector,
         "profileDir": str(profile_dir),
     }
 

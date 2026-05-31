@@ -5,9 +5,6 @@
     "github_main": {
       "displayName": "GitHub - Kisisel",
       "provider": "github",
-      "loginUrl": "https://github.com/login",
-      "loggedInUrl": "https://github.com/",
-      "loginCheckSelector": "header [aria-label='View profile and more']",
       "email": "",
       "password": "",
       "profileDir": ""
@@ -15,9 +12,6 @@
     "google_main": {
       "displayName": "Google - Kisisel",
       "provider": "google",
-      "loginUrl": "https://accounts.google.com/",
-      "loggedInUrl": "https://myaccount.google.com/",
-      "loginCheckSelector": "a[aria-label*='Google Hesabi'], a[aria-label*='Google Account']",
       "email": "",
       "password": "",
       "profileDir": ""
@@ -25,9 +19,6 @@
     "linkedin_main": {
       "displayName": "LinkedIn - Kisisel",
       "provider": "linkedin",
-      "loginUrl": "https://www.linkedin.com/login",
-      "loggedInUrl": "https://www.linkedin.com/feed/",
-      "loginCheckSelector": ".global-nav__me-photo, .global-nav__primary-link[href*='/feed'], a[href='/feed/'], nav[aria-label*='Primary']",
       "email": "",
       "password": "",
       "profileDir": ""

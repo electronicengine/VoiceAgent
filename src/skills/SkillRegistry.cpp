@@ -99,6 +99,19 @@ bool ParseSkillFile(const std::filesystem::path& path, Skill& skill) {
     skill.triggerMode = ToLower(meta.value("triggerMode", std::string{"any"}));
     skill.priority = meta.value("priority", 0);
     skill.alwaysOn = meta.value("alwaysOn", false);
+    skill.account.reset();
+
+    const auto accountIt = meta.find("account");
+    if (accountIt != meta.end() && accountIt->is_object()) {
+        SkillAccountConfig account;
+        account.id = Trim(accountIt->value("id", std::string{}));
+        account.loginUrl = Trim(accountIt->value("loginUrl", std::string{}));
+        account.loggedInUrl = Trim(accountIt->value("loggedInUrl", std::string{}));
+        account.loginCheckSelector = Trim(accountIt->value("loginCheckSelector", std::string{}));
+        if (!account.id.empty()) {
+            skill.account = std::move(account);
+        }
+    }
 
     skill.triggers.clear();
     const auto triggersIt = meta.find("triggers");
@@ -223,6 +236,22 @@ std::vector<const Skill*> SkillRegistry::MatchSkills(
         matched.resize(maxSkills);
     }
     return matched;
+}
+
+const SkillAccountConfig* SkillRegistry::FindAccountConfig(const std::string& accountId) const {
+    const std::string trimmed = Trim(accountId);
+    if (trimmed.empty()) {
+        return nullptr;
+    }
+    for (const auto& skill : skills_) {
+        if (!skill.account.has_value()) {
+            continue;
+        }
+        if (Trim(skill.account->id) == trimmed) {
+            return &*skill.account;
+        }
+    }
+    return nullptr;
 }
 
 std::string SkillRegistry::RenderInjection(const std::vector<const Skill*>& selected) {

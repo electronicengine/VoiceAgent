@@ -3,6 +3,12 @@
   "name": "linkedin_account",
   "description": "LinkedIn kisisel hesap erisimi — baglanti istekleri, mesajlar, profil, is ilanlari (WebBrowserTool accountId=linkedin_main).",
   "triggers": ["linkedin", "linkin", "baglanti", "baglantı", "network", "mesaj linkedin", "iş ilanı", "is ilani", "profil linkedin", "linkedin mesaj", "linkedin profil", "linkedin hesab", "linkedin'de"],
+  "account": {
+    "id": "linkedin_main",
+    "loginUrl": "https://www.linkedin.com/login",
+    "loggedInUrl": "https://www.linkedin.com/feed/",
+    "loginCheckSelector": ".global-nav__me-photo, .global-nav__primary-link[href*='/feed'], a[href='/feed/'], nav[aria-label*='Primary']"
+  },
   "priority": 8
 }
 ---

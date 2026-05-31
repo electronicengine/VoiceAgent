@@ -3,6 +3,12 @@
   "name": "github_account",
   "description": "GitHub kisisel hesap erisimi (WebBrowserTool accountId=github_main).",
   "triggers": ["github", "repo", "repolarım", "repolarim", "pull request", "issue", "commit"],
+  "account": {
+    "id": "github_main",
+    "loginUrl": "https://github.com/login",
+    "loggedInUrl": "https://github.com/",
+    "loginCheckSelector": "header [aria-label='View profile and more']"
+  },
   "priority": 7
 }
 ---

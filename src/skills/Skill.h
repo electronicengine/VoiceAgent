@@ -1,9 +1,17 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace voice_agent {
+
+struct SkillAccountConfig {
+    std::string id;
+    std::string loginUrl;
+    std::string loggedInUrl;
+    std::string loginCheckSelector;
+};
 
 struct Skill {
     std::string name;
@@ -19,6 +27,8 @@ struct Skill {
     int priority = 0;
     // alwaysOn=true skills are injected on every turn (use sparingly).
     bool alwaysOn = false;
+    // Optional account metadata used by WebBrowserTool/login bootstrap flows.
+    std::optional<SkillAccountConfig> account;
 };
 
 }  // namespace voice_agent

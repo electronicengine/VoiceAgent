@@ -35,6 +35,12 @@ struct CommandExecution {
     std::string output;
 };
 
+struct AccountLoginConfig {
+    std::string loginUrl;
+    std::string loggedInUrl;
+    std::string loginCheckSelector;
+};
+
 std::filesystem::path ResolveRepoRootFromRunner(const std::string& runnerPath) {
     std::filesystem::path runner = std::filesystem::absolute(std::filesystem::path(runnerPath));
     return runner.parent_path().parent_path().parent_path();
@@ -131,6 +137,38 @@ nlohmann::json BuildSessionRecoveryOutput(const nlohmann::json& payload,
     out["recoveryHint"] =
         "Bu site icin once recoveryCommand'i ShellTool ile calistir; kullanici manuel girisi tamamlayinca ayni WebBrowserTool cagrisini tekrar dene.";
     return out;
+}
+
+AccountLoginConfig ResolveAccountLoginConfig(const AccountRecord& record,
+                                             const SkillRegistry* skillRegistry) {
+    AccountLoginConfig resolved{
+        record.loginUrl,
+        record.loggedInUrl,
+        record.loginCheckSelector,
+    };
+    if (skillRegistry == nullptr) {
+        if (resolved.loggedInUrl.empty()) {
+            resolved.loggedInUrl = resolved.loginUrl;
+        }
+        return resolved;
+    }
+
+    const SkillAccountConfig* skillAccount = skillRegistry->FindAccountConfig(record.id);
+    if (skillAccount != nullptr) {
+        if (!skillAccount->loginUrl.empty()) {
+            resolved.loginUrl = skillAccount->loginUrl;
+        }
+        if (!skillAccount->loggedInUrl.empty()) {
+            resolved.loggedInUrl = skillAccount->loggedInUrl;
+        }
+        if (!skillAccount->loginCheckSelector.empty()) {
+            resolved.loginCheckSelector = skillAccount->loginCheckSelector;
+        }
+    }
+    if (resolved.loggedInUrl.empty()) {
+        resolved.loggedInUrl = resolved.loginUrl;
+    }
+    return resolved;
 }
 
 CommandExecution RunCommand(const std::string& command, const std::string& stage) {
@@ -574,9 +612,12 @@ CommandExecution RunInteractiveCommand(
 
 }  // namespace
 
-WebBrowserTool::WebBrowserTool(const AppConfig& config, const AccountStore* accountStore)
+WebBrowserTool::WebBrowserTool(const AppConfig& config,
+                                                             const AccountStore* accountStore,
+                                                             const SkillRegistry* skillRegistry)
     : runnerScriptPath_(config.webBrowserRunnerPath),
       accountStore_(accountStore),
+            skillRegistry_(skillRegistry),
       promptTimeoutSeconds_(config.browserPromptTimeoutSeconds > 0 ? config.browserPromptTimeoutSeconds : 180),
       definition_({
           "WebBrowserTool",
@@ -723,14 +764,23 @@ ToolResult WebBrowserTool::Execute(const ToolCall& call, const CancellationToken
                      {"details", profileError.message()}}
                 };
             }
+            const AccountLoginConfig loginConfig = ResolveAccountLoginConfig(*record, skillRegistry_);
+            if (loginConfig.loginUrl.empty() || loginConfig.loggedInUrl.empty()) {
+                return ToolResult{
+                    false,
+                    false,
+                    "Hesap login metadata'si eksik. Ilgili skill frontmatter'inda account.loginUrl ve account.loggedInUrl tanimlanmali.",
+                    {{"reason", "missing_account_login_metadata"}, {"accountId", accountId}}
+                };
+            }
             config["accountProfileDir"] = record->profileDir.string();
             config["account"] = {
                 {"id", record->id},
                 {"displayName", record->displayName},
                 {"provider", record->provider},
-                {"loginUrl", record->loginUrl},
-                {"loggedInUrl", record->loggedInUrl},
-                {"loginCheckSelector", record->loginCheckSelector},
+                {"loginUrl", loginConfig.loginUrl},
+                {"loggedInUrl", loginConfig.loggedInUrl},
+                {"loginCheckSelector", loginConfig.loginCheckSelector},
                 {"manualLoginTimeoutSeconds", promptTimeoutSeconds_},
             };
             // headless'i runner DISPLAY varligina gore karar verir; burada zorlama yok.

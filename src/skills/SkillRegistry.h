@@ -30,6 +30,9 @@ public:
         std::size_t maxSkills
     ) const;
 
+    // Returns account metadata declared in a skill frontmatter, if any.
+    const SkillAccountConfig* FindAccountConfig(const std::string& accountId) const;
+
     // Concatenates the bodies of `selected` into a single block ready to be
     // prepended to the user message. Returns empty string when `selected` is
     // empty.

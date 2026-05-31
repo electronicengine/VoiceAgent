@@ -3,6 +3,12 @@
   "name": "google_account",
   "description": "Gmail / Google Drive / Takvim / YouTube kisisel hesap erisimi (WebBrowserTool accountId=google_main).",
   "triggers": ["gmail", "mail", "e-posta", "eposta", "epostam", "mailim", "takvim", "calendar", "drive", "youtube hesab", "google hesab", "kendi hesab", "hesabım", "hesabim"],
+  "account": {
+    "id": "google_main",
+    "loginUrl": "https://accounts.google.com/",
+    "loggedInUrl": "https://myaccount.google.com/",
+    "loginCheckSelector": "a[href*='SignOutOptions'], a[aria-label*='Google Hesab'], a[aria-label*='Google Account']"
+  },
   "priority": 8
 }
 ---

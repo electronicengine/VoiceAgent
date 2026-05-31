@@ -22,9 +22,6 @@ aynı yöntemle ilk kez bağlanabilir.
     "google_main": {
       "displayName": "Google - Kisisel",
       "provider": "google",
-      "loginUrl": "https://accounts.google.com/",
-      "loggedInUrl": "https://myaccount.google.com/",
-      "loginCheckSelector": "a[href*=\"SignOutOptions\"], a[aria-label*=\"Google Hesab\"]",
       "email": "kullanici@gmail.com",
       "password": "",
       "profileDir": ""
@@ -32,9 +29,6 @@ aynı yöntemle ilk kez bağlanabilir.
     "linkedin_main": {
       "displayName": "LinkedIn - Kisisel",
       "provider": "linkedin",
-      "loginUrl": "https://www.linkedin.com/login",
-      "loggedInUrl": "https://www.linkedin.com/feed/",
-      "loginCheckSelector": ".global-nav__me-photo, a[href=\"/feed/\"]",
       "email": "kullanici@hotmail.com",
       "password": "",
       "profileDir": ""
@@ -47,12 +41,11 @@ aynı yöntemle ilk kez bağlanabilir.
 
 | Alan | Açıklama |
 |---|---|
-| `loginUrl` | Chromium'un ilk açıldığı giriş sayfası |
-| `loggedInUrl` | Başarılı giriş sonrası yönlenilen URL |
-| `loginCheckSelector` | Giriş tamamlandığında DOM'da beklenen CSS seçici |
 | `email` / `password` | Yalnızca yerel referans; modele asla iletilmez; boş bırakılabilir |
 | `profileDir` | Boş bırakılırsa `~/.voice_agent_browser/profiles/<accountId>` kullanılır |
 | `accountsRootDir` | Profil dizinleri için kök; boş bırakılırsa `~/.voice_agent_browser/profiles/` |
+
+`loginUrl`, `loggedInUrl` ve `loginCheckSelector` artık ilgili skill dosyasinin (`skills/google_account.md`, `skills/linkedin_account.md`, vb.) JSON frontmatter'inda `account` blogu altinda tutulur.
 
 ### Yeni hesap eklemek
 
@@ -63,9 +56,9 @@ Bir hesabın bu akışla çalışabilmesi için pratikte şu 3 alan yeterlidir:
 
 | Alan | Neden gerekli |
 |---|---|
-| `loginUrl` | İlk görünür giriş sayfasını açmak için |
-| `loggedInUrl` | Giriş sonrası doğru yere yönlenip yönlenmediğini anlamak için |
-| `loginCheckSelector` | Oturum gerçekten açık mı diye DOM üzerinden kontrol etmek için |
+| Skill frontmatter `account.loginUrl` | İlk görünür giriş sayfasını açmak için |
+| Skill frontmatter `account.loggedInUrl` | Giriş sonrası doğru yere yönlenip yönlenmediğini anlamak için |
+| Skill frontmatter `account.loginCheckSelector` | Oturum gerçekten açık mı diye DOM üzerinden kontrol etmek için |
 
 Örnek: yarın X / Twitter eklemek isterseniz şu tip bir kayıt yeterlidir:
 
@@ -73,12 +66,20 @@ Bir hesabın bu akışla çalışabilmesi için pratikte şu 3 alan yeterlidir:
 "twitter_main": {
   "displayName": "X / Twitter - Kisisel",
   "provider": "twitter",
-  "loginUrl": "https://x.com/i/flow/login",
-  "loggedInUrl": "https://x.com/home",
-  "loginCheckSelector": "a[data-testid='AppTabBar_Home_Link'], button[data-testid='SideNav_AccountSwitcher_Button']",
   "email": "",
   "password": "",
   "profileDir": ""
+}
+```
+
+Ve ilgili skill frontmatter'i su tipte olmalidir:
+
+```json
+"account": {
+  "id": "twitter_main",
+  "loginUrl": "https://x.com/i/flow/login",
+  "loggedInUrl": "https://x.com/home",
+  "loginCheckSelector": "a[data-testid='AppTabBar_Home_Link'], button[data-testid='SideNav_AccountSwitcher_Button']"
 }
 ```
 
