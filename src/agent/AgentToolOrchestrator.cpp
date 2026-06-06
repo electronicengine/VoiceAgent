@@ -1,9 +1,9 @@
 #include "agent/AgentToolOrchestrator.h"
 
 #include "common/StringUtils.h"
+#include "common/logger.h"
 
 #include <nlohmann/json.hpp>
-#include <iostream>
 #include <algorithm>
 #include <stdexcept>
 
@@ -50,29 +50,35 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
     currentInput.text = userText;
 
     if (registryController_ != nullptr) {
-        std::string enhancedPrompt = registryController_->GetEnhancedPrompt(userText);
+        std::string enhancedPrompt = registryController_->GetEnhancedPrompt(userText, static_cast<int>(maxSkillsPerTurn_));
         if (!enhancedPrompt.empty()) {
-            std::cout << "[Orchestrator] Enhanced prompt with registry matches:\n" << enhancedPrompt << "\n";
+            INFO("[Orchestrator] Enhanced prompt with registry matches:\n{}", enhancedPrompt);
             currentInput.text = enhancedPrompt + userText;
         }else
         {
-            std::cout << "[Orchestrator] No relevant registry entries found for the user input.\n";
+            INFO("[Orchestrator] No relevant registry entries found for the user input.");
         }
     }
 
     AgentTurnResult result;
+    int consecutiveEmptyResponses = 0;
 
     for (int step = 0; step < maxAgentSteps_; ++step) {
         if (token != nullptr && token->IsCancelled()) {
             return result;
         }
-        std::cout << "Agent step " << (step + 1) << " of " << maxAgentSteps_ << "\n";
+        INFO("Agent step {} of {}", (step + 1), maxAgentSteps_);
         const InterpreterResponse response = interpreter_.Interpret(currentInput, onPartialResponse, token);
         if (token != nullptr && token->IsCancelled()) {
             return result;
         }
         if (response.Empty()) {
-            std::cout << "Interpreter returned an empty response. Asking the model to continue without ending the program.\n\n";
+            consecutiveEmptyResponses++;
+            if (consecutiveEmptyResponses >= 2) {
+                ERROR("Interpreter returned empty response multiple times. Aborting turn.");
+                break;
+            }
+            WARNING("Interpreter returned an empty response. Asking the model to continue without ending the program.");
             currentInput.text =
                 "Sistem notu: Son assistant cevabi bos geldi veya stream kayboldu. "
                 "Mevcut baglami koruyarak ayni goreve devam et. "
@@ -81,10 +87,11 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
             currentInput.images.clear();
             continue;
         }
+        consecutiveEmptyResponses = 0;
 
         const std::vector<ToolCall> calls = ParseToolCalls(response);
         if (calls.empty()) {
-            std::cout << "No tool call detected in the response. Finalizing agent turn.\n\n";
+            INFO("No tool call detected in the response. Finalizing agent turn.");
             result.finalResponse = response;
             return result;
         }
@@ -94,7 +101,7 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
             ToolResult toolResult;
             const ITool* tool = ResolveTool(call.name);
 
-            std::cout << "Executing tool: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
+            INFO("Executing tool: {} with arguments: {}", call.name, call.arguments.dump());
             if (onAnnouncement) {
                 onAnnouncement(call.name + " kullaniyorum.");
             }
@@ -108,7 +115,7 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
             } else {
                 toolResult = tool->Execute(call, token);
             }
-            std::cout << "Tool execution result: " << toolResult.summary << "\n\n";
+            INFO("Tool execution result: {}", toolResult.summary);
 
             stepResults.push_back({call, toolResult});
             result.executedCalls.push_back(call);
@@ -126,7 +133,6 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
 }
 
 std::vector<ToolCall> AgentToolOrchestrator::ParseToolCalls(const InterpreterResponse& response) const {
-    std::cout << response.DisplayText() << "\n\n";
     std::vector<ToolCall> calls;
     
     for (const auto& segment : response.segments) {
@@ -152,7 +158,7 @@ std::vector<ToolCall> AgentToolOrchestrator::ParseToolCalls(const InterpreterRes
                 call.arguments = p.at("parameters");
             }
             calls.push_back(call);
-            std::cout << "Parsed tool call: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
+            INFO("Parsed tool call: {} with arguments: {}", call.name, call.arguments.dump());
         };
 
         if (payload.is_array()) {
@@ -179,11 +185,10 @@ const ITool* AgentToolOrchestrator::ResolveTool(const std::string& toolName) con
 
 InterpreterInput AgentToolOrchestrator::FormatToolResultMessage(
     const std::vector<std::pair<ToolCall, ToolResult>>& stepResults,
-    const std::string& originalUserText) const {
+    const std::string& /*originalUserText*/) const {
     InterpreterInput input;
 
-    std::string message = "Arac sonuclari\n";
-    message += "Orijinal istek: " + originalUserText + "\n";
+    std::string message = "Arac sonuclari:\n";
     
     for (size_t i = 0; i < stepResults.size(); ++i) {
         const auto& call = stepResults[i].first;
@@ -204,7 +209,37 @@ InterpreterInput AgentToolOrchestrator::FormatToolResultMessage(
         message += "Ozet: " + result.summary + "\n";
 
         if (!result.output.empty()) {
-            message += "Cikti:\n" + result.output.dump(2) + "\n";
+            nlohmann::json finalOutput = result.output;
+            bool isBrowserTool = false;
+            
+            // Handle nesting from PythonTool
+            if (finalOutput.contains("output") && finalOutput.at("output").is_object()) {
+                const auto& nested = finalOutput.at("output");
+                if (nested.contains("results") && nested.at("results").is_array()) {
+                    isBrowserTool = true;
+                }
+            } else if (finalOutput.contains("results") && finalOutput.at("results").is_array()) {
+                isBrowserTool = true;
+            }
+
+            if (result.succeeded && isBrowserTool) {
+                // wb_runner.py output is too detailed for success feedback. 
+                // Only provide a slim version focusing on the final state and key fields.
+                nlohmann::json slim = finalOutput;
+                nlohmann::json& target = slim;
+                if (slim.contains("output") && slim.at("output").is_object()) {
+                    target = slim.at("output");
+                }
+                
+                // IMPORTANT: Keep "output" field if it contains the snapshot text
+                // But remove the huge "results" array which has per-step snapshots
+                if (target.contains("results")) target.erase("results");
+                if (target.contains("artifactsDir")) target.erase("artifactsDir");
+                
+                message += "Cikti (ozetlenmis):\n" + slim.dump(2) + "\n";
+            } else {
+                message += "Cikti:\n" + finalOutput.dump(2) + "\n";
+            }
         }
 
         for (const auto& attachment : result.imageAttachments) {
@@ -215,6 +250,8 @@ InterpreterInput AgentToolOrchestrator::FormatToolResultMessage(
     if (!input.images.empty()) {
         message += "\nNot: Ekte " + std::to_string(input.images.size()) + " adet gorsel bulunmaktadir. Bunlari inceleyerek cevabini buna gore guncelle.\n";
     }
+
+    DEBUG("[Orchestrator] Final tool output message sent to AI:\n{}", message);
 
     message += "\nYonlendirme: Hedefe ulastiysan kullaniciya final cevabi ver. Hedefe ulasmadiysan ve adim hakkin kaldiysa yeni bir arac veya farkli bir yontem dene; kullanicidan sadece tekrar denemek icin yonlendirme isteme.";
     message += " Orijinal istekte kalici bir script veya skill yazma talebi varsa, bunu ilgili tool ile tamamlamadan final verme.";

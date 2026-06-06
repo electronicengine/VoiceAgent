@@ -1,9 +1,11 @@
 #include "common/StdinUserPromptProvider.h"
 
 #include "common/StringUtils.h"
+#include "common/logger.h"
 
 #include <iostream>
 #include <string>
+#include <cstdio>
 
 namespace voice_agent {
 
@@ -18,7 +20,8 @@ PromptResult StdinUserPromptProvider::Ask(
         return result;
     }
 
-    std::cout << "\n[BrowserPrompt] " << question << "\nYanit: " << std::flush;
+    INFO("\n[BrowserPrompt] {}\nYanit: ", question);
+    std::fflush(stdout);
 
     std::string line;
     if (!std::getline(std::cin, line)) {

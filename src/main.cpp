@@ -28,6 +28,7 @@
 #include "audio/AlsaSpeaker.h"
 #include "audio/VoiceController.h"
 #include "audio/VoiceActivityDetector.h"
+#include "common/logger.h"
 #include <vector>
 
 namespace {
@@ -58,7 +59,7 @@ std::string BuildSystemPrompt(
         }
     prompt << "* En fazla " << maxAgentSteps << " adimda sonuca git." << "\n\n";
 
-    std::cout << "System prompt:\n" << prompt.str() << "\n\n";
+    INFO("System prompt:\n{}\n", prompt.str());
     return prompt.str();
 }
 
@@ -71,7 +72,7 @@ int main() {
         const voice_agent::AppConfig config = voice_agent::LoadConfig();
 
         if (!config.resolvedSystemPromptFilePath.empty()) {
-            std::cout << "Loaded system prompt file: " << config.resolvedSystemPromptFilePath << "\n";
+            INFO("Loaded system prompt file: {}", config.resolvedSystemPromptFilePath);
         }
 
         voice_agent::AccountStore accountStore;
@@ -81,11 +82,10 @@ int main() {
                 config.resolvedAccountsRootDir
             );
             if (accountStore.Loaded()) {
-                std::cout << "Loaded accounts file: " << config.resolvedAccountsFilePath
-                          << " (" << accountStore.AccountIds().size() << " hesap)\n";
+                INFO("Loaded accounts file: {} ({} hesap)", config.resolvedAccountsFilePath, accountStore.AccountIds().size());
             }
         } catch (const std::exception& ex) {
-            std::cerr << "account.json yuklenemedi: " << ex.what() << "\n";
+            ERROR("account.json yuklenemedi: {}", ex.what());
         }
 
         auto interpreter = std::make_unique<voice_agent::OpenAiInterpreter>(config);
@@ -98,12 +98,12 @@ int main() {
         voice_agent::LlamaOperator llama;
         if (!config.llamaEmbedModelPath.empty()) {
             bool ret = llama.loadEmbedModel(config.llamaEmbedModelPath, LLAMA_POOLING_TYPE_CLS);
-            std::cout << "Llama embed model " << (ret ? "success" : "failed") << ": " << config.llamaEmbedModelPath << "\n";
+            INFO("Llama embed model {}: {}", (ret ? "success" : "failed"), config.llamaEmbedModelPath);
         }
 
         voice_agent::RegistryController registryController("registry.db", llama);
         if (registryController.Initialize()) {
-            std::cout << "Registry system initialized.\n";
+            INFO("Registry system initialized.");
 
         }
 
@@ -188,7 +188,7 @@ int main() {
         agent->Run();
         return 0;
     } catch (const std::exception& ex) {
-        std::cerr << "Fatal error: " << ex.what() << std::endl;
+        ERROR("Fatal error: {}", ex.what());
         return 1;
     }
 }

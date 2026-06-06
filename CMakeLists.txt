@@ -56,6 +56,13 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG        10.1.1 # Or any stable version
+)
+FetchContent_MakeAvailable(fmt)
+
 find_package(CURL QUIET)
 if(NOT CURL_FOUND)
     message(FATAL_ERROR
@@ -244,6 +251,7 @@ target_link_libraries(cpp_voice_agent
         llama
         ggml
         Threads::Threads
+        fmt::fmt
 )
 
 # libfvad is built from a sibling fork of WebRTC's signal_processing code and
@@ -301,6 +309,7 @@ target_link_libraries(voice_agent_tests
         llama
         ggml
         Threads::Threads
+        fmt::fmt
         GTest::gtest_main
 )
 

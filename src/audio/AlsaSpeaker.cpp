@@ -1,11 +1,11 @@
 #include "audio/AlsaSpeaker.h"
 
 #include <alsa/asoundlib.h>
+#include "common/logger.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -99,7 +99,7 @@ void AlsaSpeaker::WorkerLoop() {
 
     int result = snd_pcm_open(&pcmHandle, deviceName, SND_PCM_STREAM_PLAYBACK, 0);
     if (result < 0) {
-        std::cerr << "[speaker] open failed: " << snd_strerror(result) << "\n";
+        ERROR("[speaker] open failed: {}", snd_strerror(result));
         running_.store(false);
         return;
     }
@@ -186,7 +186,7 @@ void AlsaSpeaker::WorkerLoop() {
                     continue;
                 }
                 if (r < 0) {
-                    std::cerr << "[speaker] write error: " << snd_strerror(static_cast<int>(r)) << "\n";
+                    ERROR("[speaker] write error: {}", snd_strerror(static_cast<int>(r)));
                     snd_pcm_prepare(pcmHandle);
                     continue;
                 }
@@ -214,7 +214,7 @@ void AlsaSpeaker::WorkerLoop() {
 
         snd_pcm_drop(pcmHandle);
     } catch (const std::exception& ex) {
-        std::cerr << "[speaker] worker error: " << ex.what() << "\n";
+        ERROR("[speaker] worker error: {}", ex.what());
     }
 
     if (pcmHandle != nullptr) {

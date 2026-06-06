@@ -1,6 +1,7 @@
 #include "PythonToolTest.h"
 #include "tools/PythonTool.h"
 #include "tools/ProjectFilesTool.h"
+#include <fstream>
 #include <gtest/gtest.h>
 
 namespace voice_agent {
@@ -77,6 +78,41 @@ TEST_F(PythonToolTest, TestWebRunnerNavigation) {
     EXPECT_TRUE(scriptOutput.is_object());
     EXPECT_TRUE(scriptOutput.value("ok", false));
     EXPECT_FALSE(scriptOutput.value("title", "").empty());
+}
+
+TEST_F(PythonToolTest, TestImageAttachmentDetection) {
+    ProjectFilesTool pft(scriptsRoot);
+    const std::string scriptName = "image_test.py";
+    const std::string dummyImagePath = (scriptsRoot / "dummy.png").string();
+
+    // Create a dummy image file
+    {
+        std::ofstream ofs(dummyImagePath);
+        ofs << "dummy image content";
+    }
+    
+    // Script outputs a JSON with finalScreenshot pointing to dummy image
+    ToolCall write; write.name="ProjectFilesTool";
+    write.arguments = {
+        {"path", scriptName},
+        {"content", "import json\nprint(json.dumps({'status':'ok', 'finalScreenshot': '" + dummyImagePath + "'}))"}
+    };
+    pft.Execute(write, nullptr);
+
+    AppConfig config; config.resolvedPythonToolScriptRoot = scriptsRoot.string();
+    PythonTool pt(config, nullptr);
+    ToolCall run; run.name="PythonTool"; run.arguments={{"script", scriptName}};
+    auto res = pt.Execute(run, nullptr);
+    
+    EXPECT_TRUE(res.succeeded);
+    
+    // VERIFY: imageAttachments must contain the screenshot
+    ASSERT_EQ(res.imageAttachments.size(), 1);
+    EXPECT_EQ(res.imageAttachments[0].filePath, dummyImagePath);
+    EXPECT_EQ(res.imageAttachments[0].detail, "high");
+
+    // Clean up
+    std::filesystem::remove(dummyImagePath);
 }
 
 } // namespace voice_agent

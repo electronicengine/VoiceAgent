@@ -569,24 +569,108 @@ def maybe_locator(page, step):
     return _build_locator(page, specs[0])
 
 
+def search_roots(page):
+    """Return the main page plus every child frame (main first).
+
+    Many sites (Gmail compose, embedded editors, consent banners) render
+    interactive controls inside iframes. page.locator() only searches the main
+    frame, so we iterate over all frames to find elements wherever they live.
+    """
+    roots = [page]
+    try:
+        main_frame = page.main_frame
+    except Exception:
+        main_frame = None
+    try:
+        for frame in page.frames:
+            if main_frame is not None and frame is main_frame:
+                continue
+            try:
+                if frame.is_detached():
+                    continue
+            except Exception:
+                pass
+            roots.append(frame)
+    except Exception:
+        pass
+    return roots
+
+
+async def find_first_locator(page, specs, *, require_visible=True, timeout=0):
+    """Search the main frame and all iframes for the first matching spec.
+
+    Returns (locator, spec) for the first match, or (None, None). When timeout
+    (ms) is positive, polls until a match appears or the deadline passes.
+    """
+    deadline = asyncio.get_running_loop().time() + (max(timeout, 0) / 1000)
+    while True:
+        for spec in specs:
+            for root in search_roots(page):
+                try:
+                    loc = _build_locator(root, spec).first
+                    if await loc.count() == 0:
+                        continue
+                    if require_visible and not await loc.is_visible():
+                        continue
+                    return loc, spec
+                except Exception:
+                    continue
+        if timeout <= 0 or asyncio.get_running_loop().time() >= deadline:
+            return None, None
+        try:
+            await page.wait_for_timeout(250)
+        except Exception:
+            await asyncio.sleep(0.25)
+
+
+async def resolve_locator_async(page, step, *, require_visible=False, timeout=8000):
+    """Frame-aware version of resolve_locator used by interactive actions."""
+    specs = _step_to_specs(step)
+    if not specs:
+        raise ValueError("Step requires a locator")
+    loc, spec = await find_first_locator(
+        page, specs, require_visible=require_visible, timeout=timeout
+    )
+    if loc is not None:
+        log(f"resolve_locator_async: matched {describe_spec(spec)}")
+        return loc
+    return _build_locator(page, specs[0])
+
+
+async def maybe_locator_async(page, step, *, timeout=0):
+    specs = _step_to_specs(step)
+    if not specs:
+        return None
+    loc, spec = await find_first_locator(
+        page, specs, require_visible=False, timeout=timeout
+    )
+    if loc is not None:
+        return loc
+    return _build_locator(page, specs[0])
+
+
 async def click_first(page, specs, *, force=False, timeout=3000, delay=50):
     for spec in specs:
         spec_desc = describe_spec(spec)
-        try:
-            loc = _build_locator(page, spec).first
-        except Exception:
-            log(f"click_first: invalid locator spec: {spec_desc}")
-            continue
-        try:
-            if await loc.count() == 0:
-                log(f"click_first: no match for {spec_desc}")
+        matched_root = False
+        for root in search_roots(page):
+            try:
+                loc = _build_locator(root, spec).first
+            except Exception:
+                log(f"click_first: invalid locator spec: {spec_desc}")
+                break
+            try:
+                if await loc.count() == 0:
+                    continue
+                matched_root = True
+                await loc.click(timeout=timeout, force=force, delay=delay)
+                log(f"click_first: clicked {spec_desc} force={force} timeout={timeout}")
+                return True
+            except Exception as exc:
+                log(f"click_first: failed {spec_desc}: {exc}")
                 continue
-            await loc.click(timeout=timeout, force=force, delay=delay)
-            log(f"click_first: clicked {spec_desc} force={force} timeout={timeout}")
-            return True
-        except Exception as exc:
-            log(f"click_first: failed {spec_desc}: {exc}")
-            continue
+        if not matched_root:
+            log(f"click_first: no match for {spec_desc}")
     return False
 
 
@@ -595,19 +679,20 @@ async def wait_for_clickable(page, specs, timeout=8000):
     while asyncio.get_running_loop().time() < deadline:
         for spec in specs:
             spec_desc = describe_spec(spec)
-            try:
-                loc = _build_locator(page, spec).first
-                if await loc.count() == 0:
+            for root in search_roots(page):
+                try:
+                    loc = _build_locator(root, spec).first
+                    if await loc.count() == 0:
+                        continue
+                    if not await loc.is_visible():
+                        continue
+                    disabled = await loc.get_attribute("disabled")
+                    aria_disabled = await loc.get_attribute("aria-disabled")
+                    if disabled is None and aria_disabled not in {"true", "True"}:
+                        log(f"wait_for_clickable: ready {spec_desc}")
+                        return True
+                except Exception:
                     continue
-                if not await loc.is_visible():
-                    continue
-                disabled = await loc.get_attribute("disabled")
-                aria_disabled = await loc.get_attribute("aria-disabled")
-                if disabled is None and aria_disabled not in {"true", "True"}:
-                    log(f"wait_for_clickable: ready {spec_desc}")
-                    return True
-            except Exception:
-                continue
         await page.wait_for_timeout(250)
     return False
 
@@ -617,24 +702,25 @@ async def wait_for_selector_any(page, specs, *, state="visible", timeout=8000):
     while asyncio.get_running_loop().time() < deadline:
         for spec in specs:
             spec_desc = describe_spec(spec)
-            try:
-                loc = _build_locator(page, spec).first
-                count = await loc.count()
-                if state in ("attached", "visible") and count == 0:
+            for root in search_roots(page):
+                try:
+                    loc = _build_locator(root, spec).first
+                    count = await loc.count()
+                    if state in ("attached", "visible") and count == 0:
+                        continue
+                    if state == "visible" and not await loc.is_visible():
+                        continue
+                    if state == "hidden" and (count == 0 or not await loc.is_visible()):
+                        log(f"wait_for_selector_any: matched hidden {spec_desc}")
+                        return spec_desc
+                    if state == "detached" and count == 0:
+                        log(f"wait_for_selector_any: matched detached {spec_desc}")
+                        return spec_desc
+                    if state in ("attached", "visible"):
+                        log(f"wait_for_selector_any: matched {spec_desc} state={state}")
+                        return spec_desc
+                except Exception:
                     continue
-                if state == "visible" and not await loc.is_visible():
-                    continue
-                if state == "hidden" and (count == 0 or not await loc.is_visible()):
-                    log(f"wait_for_selector_any: matched hidden {spec_desc}")
-                    return spec_desc
-                if state == "detached" and count == 0:
-                    log(f"wait_for_selector_any: matched detached {spec_desc}")
-                    return spec_desc
-                if state in ("attached", "visible"):
-                    log(f"wait_for_selector_any: matched {spec_desc} state={state}")
-                    return spec_desc
-            except Exception:
-                continue
         await page.wait_for_timeout(250)
     return ""
 
@@ -1057,10 +1143,12 @@ async def execute_step(page, step, index, artifacts_dir):
         if not ready and step.get("requireSuccess", True):
             raise RuntimeError(f"wait_for_clickable timed out for step {index + 1}")
     elif action == "hover":
-        loc = resolve_locator(page, step)
+        loc = await resolve_locator_async(page, step, timeout=int(step.get("timeoutMs", 8000)))
         await loc.hover()
     elif action == "type":
-        loc = resolve_locator(page, step)
+        loc = await resolve_locator_async(
+            page, step, require_visible=True, timeout=int(step.get("timeoutMs", 8000))
+        )
         if step.get("clear", True):
             try:
                 await loc.click()
@@ -1069,19 +1157,21 @@ async def execute_step(page, step, index, artifacts_dir):
                 pass
         await loc.type(step.get("text", ""), delay=int(step.get("delayMs", 60)))
     elif action == "fill":
-        loc = resolve_locator(page, step)
+        loc = await resolve_locator_async(
+            page, step, require_visible=True, timeout=int(step.get("timeoutMs", 8000))
+        )
         await loc.fill(step.get("text", ""))
     elif action == "press":
         key = step.get("key")
         if not key:
             raise ValueError("press action requires key")
-        loc = maybe_locator(page, step)
+        loc = await maybe_locator_async(page, step, timeout=int(step.get("timeoutMs", 0)))
         if loc is None:
             await page.keyboard.press(key)
         else:
             await loc.press(key)
     elif action == "select":
-        loc = resolve_locator(page, step)
+        loc = await resolve_locator_async(page, step, timeout=int(step.get("timeoutMs", 8000)))
         kwargs = {}
         if "value" in step:
             kwargs["value"] = step["value"]
@@ -1108,7 +1198,7 @@ async def execute_step(page, step, index, artifacts_dir):
     elif action == "wait_for_timeout":
         await page.wait_for_timeout(int(step.get("timeoutMs", 1000)))
     elif action == "extract_text":
-        loc = maybe_locator(page, step) or page.locator("body")
+        loc = await maybe_locator_async(page, step) or page.locator("body")
         try:
             count = await loc.count()
         except Exception:
@@ -1125,7 +1215,7 @@ async def execute_step(page, step, index, artifacts_dir):
             entry["text"] = shorten(await loc.first.inner_text(), int(step.get("maxLength", 4000)))
         log(f"step {index + 1} extract_text preview={shorten(entry['text'], 300).replace(chr(10), ' | ')}")
     elif action == "extract_attribute":
-        loc = resolve_locator(page, step)
+        loc = await resolve_locator_async(page, step, timeout=int(step.get("timeoutMs", 8000)))
         entry["value"] = await loc.get_attribute(step.get("attribute", "value"))
     elif action == "snapshot":
         entry["text"] = shorten(await page.locator("body").inner_text(), int(step.get("maxLength", 4000)))

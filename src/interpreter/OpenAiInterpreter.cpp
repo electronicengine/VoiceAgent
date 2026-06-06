@@ -8,7 +8,8 @@
 #include <filesystem>
 #include <fstream>
 #include <cctype>
-#include <iostream>
+#include "common/logger.h"
+#include <cstdio>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -39,8 +40,8 @@ bool IsSpeakable(ResponseSegmentType type) {
 }
 
 void LogInterpreterMessage(const std::string& stage, const std::string& message) {
-    std::cout << "[OpenAiInterpreter][" << stage << "] " << message << "\n";
-    std::cout.flush();
+    DEBUG("[OpenAiInterpreter][{}] {}", stage, message);
+    std::fflush(stdout);
 }
 
 std::string DetectMimeType(const std::string& filePath) {
@@ -469,6 +470,15 @@ void OpenAiInterpreter::ConsumeSseEvent(
     const std::string deltaText = ExtractTextDelta(eventJson, label);
     if (!deltaText.empty()) {
         ConsumeStreamDelta(deltaText, state, onPartialResponse);
+        return;
+    }
+
+    if (label == "thread.run.failed") {
+        std::string error;
+        if (eventJson.contains("last_error") && eventJson.at("last_error").is_object()) {
+            error = eventJson.at("last_error").dump();
+        }
+        LogInterpreterMessage("run_failed", "OpenAI Run failed: " + error);
         return;
     }
 

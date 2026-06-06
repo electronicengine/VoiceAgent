@@ -1,8 +1,10 @@
 #include "agent/TextAgent.h"
 
 #include "common/StringUtils.h"
+#include "common/logger.h"
 
 #include <iostream>
+#include <cstdio>
 #include <stdexcept>
 #include <utility>
 
@@ -15,19 +17,19 @@ TextAgent::TextAgent(
     : Agent(std::move(interpreter), std::move(systemPrompt), std::move(agentOrchestrator)) {}
 
 void TextAgent::Run() {
-    std::cout << "Text agent is ready. Type your message.\n";
-    std::cout << "Type 'exit' or 'quit' to stop.\n\n";
+    INFO("Text agent is ready. Type your message.");
+    INFO("Type 'exit' or 'quit' to stop.\n");
 
     std::string userText;
     while (true) {
-        std::cout << "You: " << std::flush;
+        LOG_RAW("You: ");
         if (!std::getline(std::cin, userText)) {
             break;
         }
 
         userText = Trim(userText);
         if (userText.empty()) {
-            std::cout << "Input cannot be empty.\n\n";
+            WARNING("Input cannot be empty.\n");
             continue;
         }
 
@@ -36,7 +38,7 @@ void TextAgent::Run() {
             break;
         }
 
-        std::cout << "Agent: " << std::flush;
+        LOG_RAW("Agent: ");
         bool streamedAnyText = false;
 
         const AgentTurnResult turnResult = RunTurn(
@@ -48,26 +50,26 @@ void TextAgent::Run() {
                 }
 
                 streamedAnyText = true;
-                std::cout << streamedText << ' ' << std::flush;
+                LOG_RAW("{} ", streamedText);
             },
             nullptr,
             [](const std::string& announcement) {
-                std::cout << "[announcement] " << announcement << "\n";
+                INFO("[announcement] {}", announcement);
             }
         );
         const InterpreterResponse& response = turnResult.finalResponse;
         if (response.Empty()) {
-            std::cout << "Model bu turda bos bir cevap dondurdu. Program acik kaldi; tekrar deneyebilirsiniz.\n\n";
+            WARNING("Model bu turda bos bir cevap dondurdu. Program acik kaldi; tekrar deneyebilirsiniz.");
             continue;
         }
 
         const std::string displayText = response.DisplayText();
         if (!streamedAnyText && !response.SpeakableText().empty()) {
-            std::cout << response.SpeakableText();
+            LOG_RAW("{}", response.SpeakableText());
         }
-        std::cout << "\n\n";
+        LOG_RAW("\n\n");
         if (!response.SpeakableText().empty() && Trim(displayText) != Trim(response.SpeakableText())) {
-            std::cout << "Agent details:\n" << displayText << "\n\n";
+            INFO("Agent details:\n{}", displayText);
         }
     }
 }

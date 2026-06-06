@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <iostream>
+#include "common/logger.h"
 namespace voice_agent {
 
 namespace {
@@ -108,7 +108,7 @@ std::filesystem::path ResolveOptionalPath(
     const std::string& configuredPath
 ) {
     const std::string trimmedPath = Trim(configuredPath);
-    std::cout << "Resolving path. baseDir: " << baseDir << ", configuredPath: '" << configuredPath << "', trimmedPath: '" << trimmedPath << "'\n";
+    DEBUG("Resolving path. baseDir: {}, configuredPath: '{}', trimmedPath: '{}'", baseDir.string(), configuredPath, trimmedPath);
     if (trimmedPath.empty()) {
         return {};
     }
@@ -531,7 +531,7 @@ AppConfig LoadConfig() {
     }
 
     const std::filesystem::path promptPath = ResolveOptionalPath(runtimeBaseDir, config.systemPromptFilePath);
-    std::cout << "Using system prompt from: " << (promptPath.empty() ? "config field" : promptPath.string()) << "\n";
+    INFO("Using system prompt from: {}", (promptPath.empty() ? "config field" : promptPath.string()));
     if (promptPath.empty()) {
         config.systemPromptText = ReadStringField(
             interpreterOpenAiJson,

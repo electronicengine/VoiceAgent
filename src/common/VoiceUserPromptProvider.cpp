@@ -6,7 +6,8 @@
 #include "synthesizer/ISynthesizer.h"
 #include "transcriber/ITranscriber.h"
 
-#include <iostream>
+#include "common/logger.h"
+#include <cstdio>
 #include <utility>
 
 namespace voice_agent {
@@ -35,7 +36,8 @@ PromptResult VoiceUserPromptProvider::Ask(
         return result;
     }
 
-    std::cout << "[BrowserPrompt][prompt] " << question << "\n" << std::flush;
+    INFO("[BrowserPrompt][prompt] {}", question);
+    std::fflush(stdout);
 
     InterpreterResponse response;
     response.segments.push_back({ResponseSegmentType::Speech, question, true});
@@ -72,7 +74,8 @@ PromptResult VoiceUserPromptProvider::Ask(
         return result;
     }
 
-    std::cout << "[BrowserPrompt][prompt-answer] " << transcript << "\n" << std::flush;
+    INFO("[BrowserPrompt][prompt-answer] {}", transcript);
+    std::fflush(stdout);
     result.ok = true;
     result.answer = transcript;
     return result;

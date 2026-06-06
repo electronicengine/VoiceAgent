@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include <iostream>
+#include "common/logger.h"
 #include <memory>
 
 namespace voice_agent {
@@ -15,7 +15,7 @@ public:
     void Cancel() noexcept {
         bool expected = false;
         if (cancelled_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
-            std::cout << "[CancellationToken] Cancel requested.\n";
+            INFO("[CancellationToken] Cancel requested.");
         }
     }
     bool IsCancelled() const noexcept { return cancelled_.load(std::memory_order_acquire); }

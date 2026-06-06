@@ -1,4 +1,4 @@
-#include "audio/VoiceController.h"
+#include "VoiceController.h"
 
 #include <algorithm>
 #include <chrono>
@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
+#include "common/logger.h"
 #include <utility>
 
 namespace voice_agent {
@@ -163,11 +163,12 @@ void VoiceController::OnMicFrame(const std::int16_t* samples, std::size_t sample
 
     if (startedNow) {
         const bool busyNow = busy_.load();
-        std::cout << "[VoiceController] SpeechStarted rms=" << static_cast<int>(res.rms)
-                  << " noise=" << static_cast<int>(res.noiseFloorRms)
-                  << " speakerActive=" << (speakerWasActive_ ? 1 : 0)
-                  << " externalPlayback=" << (externalActive ? 1 : 0)
-                  << " busy=" << (busyNow ? 1 : 0) << "\n";
+        DEBUG("[VoiceController] SpeechStarted rms={} noise={} speakerActive={} externalPlayback={} busy={}",
+                  static_cast<int>(res.rms),
+                  static_cast<int>(res.noiseFloorRms),
+                  (speakerWasActive_ ? 1 : 0),
+                  (externalActive ? 1 : 0),
+                  (busyNow ? 1 : 0));
         OnBargeIn cb;
         {
             std::lock_guard<std::mutex> lock(callbackMutex_);
@@ -180,10 +181,10 @@ void VoiceController::OnMicFrame(const std::int16_t* samples, std::size_t sample
         // SpeechEnded -> OnUtterance -> HandleUtterance will cancel/replace
         // the current turn naturally.
         if (cb && busyNow && !externalActive) {
-            std::cout << "[VoiceController] barge-in -> cancelling current turn\n";
+            INFO("[VoiceController] barge-in -> cancelling current turn");
             cb();
         } else if (externalActive) {
-            std::cout << "[VoiceController] barge-in suppressed (external playback active)\n";
+            INFO("[VoiceController] barge-in suppressed (external playback active)");
         }
     }
 
@@ -203,8 +204,8 @@ void VoiceController::RunExternalPlaybackPoller() {
         const bool active = (rc == 0);
         const bool prev = externalPlaybackActive_.exchange(active);
         if (active != prev) {
-            std::cout << "[VoiceController] External playback (mpv) "
-                      << (active ? "started" : "stopped") << "\n";
+            INFO("[VoiceController] External playback (mpv) {}",
+                      (active ? "started" : "stopped"));
         }
         for (int i = 0; i < 5 && !externalPollerStop_.load(); ++i) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));

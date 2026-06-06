@@ -1,5 +1,5 @@
 #include "registry/ExperienceRegistry.h"
-#include <iostream>
+#include "common/logger.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -32,7 +32,7 @@ void ExperienceRegistry::LoadFromDirectory(const std::string& directory) {
                 std::string result = j.value("result", "");
                 AddExperience(actionText, result);
             } catch (const std::exception& e) {
-                std::cerr << "Failed to load experience file " << entry.path() << ": " << e.what() << std::endl;
+                ERROR("Failed to load experience file {}: {}", entry.path().string(), e.what());
             }
         }
     }
@@ -65,7 +65,7 @@ void ExperienceRegistry::AddExperience(const std::string& actionText, const std:
         sqlite3_bind_text(stmt, 3, resultText.c_str(), -1, SQLITE_TRANSIENT);
         
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to insert experience: " << sqlite3_errmsg(db_.GetHandle()) << std::endl;
+            ERROR("Failed to insert experience: {}", sqlite3_errmsg(db_.GetHandle()));
         }
         sqlite3_finalize(stmt);
     }

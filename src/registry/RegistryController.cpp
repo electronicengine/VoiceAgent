@@ -46,11 +46,11 @@ void RegistryController::LoadNotes(const std::string& directory) {
     notes_->LoadFromDirectory(directory);
 }
 
-std::string RegistryController::GetEnhancedPrompt(const std::string& userText) {
+std::string RegistryController::GetEnhancedPrompt(const std::string& userText, int skillLimit) {
     std::ostringstream oss;
 
     // 1. Skill Matching
-    auto matchedSkills = skills_->MatchSkills(userText);
+    auto matchedSkills = skills_->MatchSkills(userText, 0.4f, skillLimit);
     for (const auto& skill : matchedSkills) {
         oss << "--- [SKILL: " << skill.name << "] body ---\n"
             << skill.body << "\n--- [/SKILL] ---\n\n";

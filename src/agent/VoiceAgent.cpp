@@ -1,11 +1,12 @@
 #include "agent/VoiceAgent.h"
 
 #include "common/StringUtils.h"
+#include "common/logger.h"
 
 #include <chrono>
-#include <iostream>
 #include <stdexcept>
 #include <utility>
+#include <cstdio>
 
 namespace voice_agent {
 
@@ -46,8 +47,8 @@ VoiceAgent::~VoiceAgent() {
 }
 
 void VoiceAgent::Run() {
-    std::cout << "Voice agent is ready. Speak into your microphone.\n";
-    std::cout << "Press Ctrl+C to stop.\n\n";
+    INFO("Voice agent is ready. Speak into your microphone.");
+    INFO("Press Ctrl+C to stop.\n");
 
     voiceController_->SetOnUtterance(
         [this](std::vector<char> wavBytes) { HandleUtterance(std::move(wavBytes)); });
@@ -64,7 +65,7 @@ void VoiceAgent::HandleUtterance(std::vector<char> wavBytes) {
     {
         std::lock_guard<std::mutex> lock(turnMutex_);
         if (currentTurn_) {
-            std::cout << "[VoiceAgent] new utterance arrived; cancelling previous turn\n";
+            INFO("[VoiceAgent] new utterance arrived; cancelling previous turn");
         }
     }
     CancelCurrentTurn();
@@ -84,7 +85,7 @@ void VoiceAgent::HandleUtterance(std::vector<char> wavBytes) {
 }
 
 void VoiceAgent::HandleBargeIn() {
-    std::cout << "[VoiceAgent] HandleBargeIn -> cancelling current turn\n";
+    INFO("[VoiceAgent] HandleBargeIn -> cancelling current turn");
     CancelCurrentTurn();
 }
 
@@ -136,8 +137,8 @@ void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr 
             return;
         }
 
-        std::cout << "You: " << userText << "\n";
-        std::cout << "Agent: " << std::flush;
+        INFO("You: {}", userText);
+        LOG_RAW("Agent: ");
 
         const AgentTurnResult turnResult = RunTurn(
             userText,
@@ -149,7 +150,7 @@ void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr 
                 if (streamedText.empty()) {
                     return;
                 }
-                std::cout << streamedText << ' ' << std::flush;
+                LOG_RAW("{} ", streamedText);
                 std::string pcm = synthesizer_->Synthesize(partialResponse, token.get());
                 if (!pcm.empty() && !token->IsCancelled()) {
                     voiceController_->Speak(std::move(pcm));
@@ -160,7 +161,7 @@ void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr 
                 if (token->IsCancelled()) {
                     return;
                 }
-                std::cout << "[announcement] " << announcement << "\n";
+                INFO("[announcement] {}", announcement);
                 InterpreterResponse speakResponse;
                 speakResponse.segments.push_back(
                     ResponseSegment{ResponseSegmentType::Speech, announcement, true});
@@ -170,7 +171,7 @@ void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr 
                 }
             });
 
-        std::cout << "\n";
+        LOG_NL();
 
         if (!token->IsCancelled()) {
             voiceController_->WaitUntilSpeakerIdle();
@@ -178,7 +179,7 @@ void VoiceAgent::RunTurnThread(std::vector<char> wavBytes, CancellationTokenPtr 
         voiceController_->SetBusy(false);
     } catch (const std::exception& ex) {
         if (!token->IsCancelled()) {
-            std::cerr << "Voice agent turn failed: " << ex.what() << "\n";
+            ERROR("Voice agent turn failed: {}", ex.what());
         }
         voiceController_->SetBusy(false);
     }

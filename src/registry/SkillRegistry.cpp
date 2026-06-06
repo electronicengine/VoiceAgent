@@ -1,9 +1,9 @@
 #include "registry/SkillRegistry.h"
 #include "common/StringUtils.h"
+#include "common/logger.h"
 #include <nlohmann/json.hpp>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <regex>
 #include <unordered_set>
@@ -96,7 +96,7 @@ void SkillRegistry::AddSkill(const std::string& filePath) {
     Skill skill;
     if (!ParseSkillFile(filePath, skill)) return;
 
-    std::cout << "Adding skill: " << skill.name << " from file: " << filePath << "\n";
+    INFO("Adding skill: {} from file: {}", skill.name, filePath);
     std::vector<float> embedding = llama_.calculateEmbeddings(skill.description);
     if (embedding.empty()) return;
 
@@ -111,7 +111,7 @@ void SkillRegistry::AddSkill(const std::string& filePath) {
         sqlite3_bind_text(stmt, 3, filePath.c_str(), -1, SQLITE_TRANSIENT);
         
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to insert skill: " << sqlite3_errmsg(db_.GetHandle()) << std::endl;
+            ERROR("Failed to insert skill: {}", sqlite3_errmsg(db_.GetHandle()));
         }
         sqlite3_finalize(stmt);
     }
@@ -125,7 +125,7 @@ void SkillRegistry::RemoveSkill(const std::string& filePath) {
         sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
 
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to delete skill: " << sqlite3_errmsg(db_.GetHandle()) << std::endl;
+            ERROR("Failed to delete skill: {}", sqlite3_errmsg(db_.GetHandle()));
         }
         sqlite3_finalize(stmt);
     }
@@ -161,7 +161,7 @@ std::vector<Skill> SkillRegistry::MatchSkills(const std::string& userText, float
         sqlite3_finalize(stmt);
 
         for(const auto& s : scored) {
-            std::cout << "Matched skill file: " << s.filePath << " with similarity: " << s.score << "\n";
+            DEBUG("Matched skill file: {} with similarity: {}", s.filePath, s.score);
         }
 
         std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
@@ -219,7 +219,7 @@ bool SkillRegistry::ParseSkillFile(const std::string& path, Skill& skill) {
         skill.filePath = path;
         return !skill.name.empty();
     } catch (const std::exception& e) {
-        std::cerr << "Failed to parse skill file JSON part: " << path << ", error: " << e.what() << std::endl;
+        ERROR("Failed to parse skill file JSON part: {}, error: {}", path, e.what());
         return false;
     }
 }

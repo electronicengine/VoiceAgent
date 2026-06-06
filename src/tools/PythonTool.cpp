@@ -2,16 +2,9 @@
 
 #include "common/IUserPromptProvider.h"
 #include "common/StringUtils.h"
+#include "common/logger.h"
 
 #include <algorithm>
-#include <array>
-#include <cerrno>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -54,8 +47,8 @@ std::string ShellEscape(const std::string& value) {
 }
 
 void LogPythonMessage(const std::string& stage, const std::string& message) {
-    std::cout << "[PythonTool][" << stage << "] " << message << "\n";
-    std::cout.flush();
+    DEBUG("[PythonTool][{}] {}", stage, message);
+    std::fflush(stdout);
 }
 
 std::vector<std::string> ParseStringList(const nlohmann::json& value) {
@@ -539,15 +532,17 @@ ToolResult PythonTool::Execute(const ToolCall& call, const CancellationToken* to
 
     nlohmann::json output = {
         {"stage", "run_script"},
-        {"command", runCommand},
         {"exitCode", runResult.exitCode},
-        {"output", payload.is_discarded() ? nlohmann::json(runResult.output) : payload},
-        {"rawOutput", runResult.output},
-        {"jsonLine", jsonLine},
-        {"venvPath", venvPath.string()},
-        {"pythonExecutable", pythonExecutable},
-        {"scriptPath", effectiveScriptPath.string()}
     };
+
+    if (!payload.is_discarded()) {
+        output["output"] = payload;
+    } else {
+        output["output"] = runResult.output;
+    }
+
+    // Include venv/script info but keep it minimal
+    output["scriptPath"] = effectiveScriptPath.string();
 
     ToolResult result{
         runResult.exitCode == 0,
@@ -559,6 +554,16 @@ ToolResult PythonTool::Execute(const ToolCall& call, const CancellationToken* to
             : "Python scripti hata ile sonlandi.",
         output
     };
+
+    if (!payload.is_discarded() && payload.is_object()) {
+        if (payload.contains("finalScreenshot") && payload.at("finalScreenshot").is_string()) {
+            const std::string screenshotPath = payload.at("finalScreenshot").get<std::string>();
+            if (!screenshotPath.empty() && std::filesystem::exists(screenshotPath)) {
+                result.imageAttachments.push_back({screenshotPath, "high"});
+            }
+        }
+    }
+
     return result;
 }
 

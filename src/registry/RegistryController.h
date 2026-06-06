@@ -26,7 +26,7 @@ public:
     void LoadNotes(const std::string& directory);
 
     // Main entry point for matching all three types
-    std::string GetEnhancedPrompt(const std::string& userText);
+    std::string GetEnhancedPrompt(const std::string& userText, int skillLimit = 2);
 
     SkillRegistry& GetSkillRegistry() { return *skills_; }
     ExperienceRegistry& GetExperienceRegistry() { return *experiences_; }

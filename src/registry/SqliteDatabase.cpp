@@ -1,5 +1,5 @@
 #include "registry/SqliteDatabase.h"
-#include <iostream>
+#include "common/logger.h"
 
 namespace voice_agent {
 
@@ -12,7 +12,7 @@ SqliteDatabase::~SqliteDatabase() {
 bool SqliteDatabase::Open() {
     int rc = sqlite3_open(dbPath_.c_str(), &db_);
     if (rc) {
-        std::cerr << "Can't open database: " << sqlite3_errmsg(db_) << std::endl;
+        ERROR("Can't open database: {}", sqlite3_errmsg(db_));
         return false;
     }
     return true;
@@ -29,7 +29,7 @@ bool SqliteDatabase::Execute(const std::string& sql) {
     char* zErrMsg = 0;
     int rc = sqlite3_exec(db_, sql.c_str(), nullptr, 0, &zErrMsg);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL error: " << zErrMsg << std::endl;
+        ERROR("SQL error: {}", zErrMsg);
         sqlite3_free(zErrMsg);
         return false;
     }
@@ -45,7 +45,7 @@ bool SqliteDatabase::Query(const std::string& sql, QueryCallback callback) {
 
     int rc = sqlite3_exec(db_, sql.c_str(), wrapped_callback, &callback, &zErrMsg);
     if (rc != SQLITE_OK) {
-        std::cerr << "SQL error: " << zErrMsg << std::endl;
+        ERROR("SQL error: {}", zErrMsg);
         sqlite3_free(zErrMsg);
         return false;
     }

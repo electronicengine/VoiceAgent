@@ -1,5 +1,5 @@
 #include "registry/NoteRegistry.h"
-#include <iostream>
+#include "common/logger.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -30,7 +30,7 @@ void NoteRegistry::LoadFromDirectory(const std::string& directory) {
                 std::string text = j.at("text");
                 AddNote(text);
             } catch (const std::exception& e) {
-                std::cerr << "Failed to load note file " << entry.path() << ": " << e.what() << std::endl;
+                ERROR("Failed to load note file {}: {}", entry.path().string(), e.what());
             }
         }
     }
@@ -62,7 +62,7 @@ void NoteRegistry::AddNote(const std::string& text) {
         sqlite3_bind_text(stmt, 2, text.c_str(), -1, SQLITE_TRANSIENT);
         
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to insert note: " << sqlite3_errmsg(db_.GetHandle()) << std::endl;
+            ERROR("Failed to insert note: {}", sqlite3_errmsg(db_.GetHandle()));
         }
         sqlite3_finalize(stmt);
     }

@@ -1,9 +1,9 @@
 #include "audio/AlsaMicrophone.h"
 
 #include <alsa/asoundlib.h>
+#include "common/logger.h"
 
 #include <cstdint>
-#include <iostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -55,7 +55,7 @@ void AlsaMicrophone::CaptureLoop() {
 
     int result = snd_pcm_open(&pcmHandle, deviceName, SND_PCM_STREAM_CAPTURE, 0);
     if (result < 0) {
-        std::cerr << "[mic] open failed: " << snd_strerror(result) << "\n";
+        ERROR("[mic] open failed: {}", snd_strerror(result));
         running_.store(false);
         return;
     }
@@ -96,7 +96,7 @@ void AlsaMicrophone::CaptureLoop() {
         }
 
         std::vector<std::int16_t> chunkBuffer(frameSamples);
-        std::cerr << "[mic] streaming capture started (sr=" << sampleRate_ << ")\n";
+        INFO("[mic] streaming capture started (sr={})", sampleRate_);
 
         while (running_.load()) {
             const snd_pcm_sframes_t r = snd_pcm_readi(pcmHandle, chunkBuffer.data(), chunkFrames);
@@ -105,7 +105,7 @@ void AlsaMicrophone::CaptureLoop() {
                 continue;
             }
             if (r < 0) {
-                std::cerr << "[mic] read error: " << snd_strerror(static_cast<int>(r)) << "\n";
+                ERROR("[mic] read error: {}", snd_strerror(static_cast<int>(r)));
                 snd_pcm_prepare(pcmHandle);
                 continue;
             }
@@ -116,7 +116,7 @@ void AlsaMicrophone::CaptureLoop() {
 
         snd_pcm_drop(pcmHandle);
     } catch (const std::exception& ex) {
-        std::cerr << "[mic] capture loop error: " << ex.what() << "\n";
+        ERROR("[mic] capture loop error: {}", ex.what());
     }
 
     if (pcmHandle != nullptr) {
