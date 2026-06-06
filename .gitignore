@@ -1,6 +1,8 @@
 voiceAgentConfig.json
 account.json
 .voice_agent_browser/
+.voice_agent_python_env/
+.venv/
 build/
 third_party/
 experiences.md

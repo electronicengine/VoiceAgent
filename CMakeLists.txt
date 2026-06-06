@@ -6,11 +6,15 @@ endif()
 
 project(cpp_voice_agent LANGUAGES CXX)
 
+include(CTest)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
+
+set(FETCHCONTENT_QUIET OFF)
 
 FetchContent_Declare(
     nlohmann_json
@@ -22,10 +26,35 @@ FetchContent_MakeAvailable(nlohmann_json)
 FetchContent_Declare(
     libfvad
     GIT_REPOSITORY https://github.com/dpirch/libfvad.git
-    GIT_TAG        master
+    GIT_TAG        532ab666c20d3cfda38bca63abbb0f152706c369 # Sabit commit hash
     GIT_SHALLOW    TRUE
+    UPDATE_DISCONNECTED ON
 )
 FetchContent_MakeAvailable(libfvad)
+
+FetchContent_Declare(
+    llama_cpp
+    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
+    GIT_TAG        260862b8ca2c9a652c297488c623997c492310cf # Sabit commit hash (master yerine)
+    GIT_SHALLOW    TRUE
+    GIT_PROGRESS   TRUE
+    UPDATE_DISCONNECTED ON
+)
+# Set llama.cpp options before making it available
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "llama.cpp: build examples" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "llama.cpp: build server" FORCE)
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "llama.cpp: build tests" FORCE)
+set(LLAMA_BUILD_COMMON ON CACHE BOOL "llama.cpp: build common" FORCE)
+FetchContent_MakeAvailable(llama_cpp)
+
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        v1.14.0
+)
+# For Windows: Do not override the settings with the defaults
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 find_package(CURL QUIET)
 if(NOT CURL_FOUND)
@@ -35,6 +64,7 @@ if(NOT CURL_FOUND)
     )
 endif()
 
+find_package(SQLite3 REQUIRED)
 find_package(ALSA REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -169,24 +199,36 @@ add_executable(cpp_voice_agent
     src/audio/VoiceActivityDetector.cpp
     src/audio/VoiceController.cpp
     src/common/HttpClient.cpp
+    src/common/llama_operator.cpp
     src/common/StdinUserPromptProvider.cpp
     src/common/StringUtils.cpp
     src/common/VoiceUserPromptProvider.cpp
     src/config/AccountStore.cpp
     src/config/AppConfig.cpp
     src/interpreter/OpenAiInterpreter.cpp
-    src/skills/SkillRegistry.cpp
+    src/registry/SqliteDatabase.cpp
+    src/registry/SkillRegistry.cpp
+    src/registry/ExperienceRegistry.cpp
+    src/registry/NoteRegistry.cpp
+    src/registry/RegistryController.cpp
     src/synthesizer/AzureRestSynthesizer.cpp
     src/tools/PythonTool.cpp
-    src/tools/RememberTool.cpp
+    src/tools/ProjectFilesTool.cpp
     src/tools/ShellTool.cpp
-    src/tools/WebBrowserTool.cpp
+    src/tools/RegistryTool.cpp
     src/transcriber/ITranscriber.cpp
     src/transcriber/AzureTranscriber.cpp
     src/transcriber/DeepgramTranscriber.cpp
 )
 
-target_include_directories(cpp_voice_agent PRIVATE src)
+target_include_directories(cpp_voice_agent PRIVATE 
+    src
+    ${llama_cpp_SOURCE_DIR}/src
+    ${llama_cpp_SOURCE_DIR}/include
+    ${llama_cpp_SOURCE_DIR}/common
+    ${llama_cpp_SOURCE_DIR}/ggml/include
+    ${SQLite3_INCLUDE_DIRS}
+)
 
 target_compile_definitions(cpp_voice_agent PRIVATE WEBRTC_POSIX)
 
@@ -194,9 +236,13 @@ target_link_libraries(cpp_voice_agent
     PRIVATE
         ALSA::ALSA
         CURL::libcurl
+        ${SQLite3_LIBRARIES}
         nlohmann_json::nlohmann_json
         PkgConfig::WEBRTC_APM
         fvad
+        llama-common
+        llama
+        ggml
         Threads::Threads
 )
 
@@ -207,3 +253,59 @@ target_link_libraries(cpp_voice_agent
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_link_options(cpp_voice_agent PRIVATE "LINKER:--allow-multiple-definition")
 endif()
+
+add_executable(voice_agent_tests
+    tests/TestBase.cpp
+    tests/tooltest/ProjectFilesToolTest.cpp
+    tests/tooltest/PythonToolTest.cpp
+    tests/tooltest/ShellToolTest.cpp
+    tests/tooltest/RegistryToolTest.cpp
+    tests/agenttest/AgentToolOrchestratorTest.cpp
+    tests/registrytest/SqliteDatabaseTest.cpp
+    tests/registrytest/LlamaOperatorTest.cpp
+    tests/registrytest/SkillRegistryTest.cpp
+    tests/registrytest/ExperienceRegistryTest.cpp
+    tests/registrytest/NoteRegistryTest.cpp
+    tests/registrytest/RegistryControllerTest.cpp
+    src/agent/AgentToolOrchestrator.cpp
+    src/common/StringUtils.cpp
+    src/common/llama_operator.cpp
+    src/registry/SqliteDatabase.cpp
+    src/registry/SkillRegistry.cpp
+    src/registry/ExperienceRegistry.cpp
+    src/registry/NoteRegistry.cpp
+    src/registry/RegistryController.cpp
+    src/tools/ProjectFilesTool.cpp
+    src/tools/PythonTool.cpp
+    src/tools/ShellTool.cpp
+    src/tools/RegistryTool.cpp
+)
+
+target_include_directories(voice_agent_tests PRIVATE 
+    src
+    tests
+    ${llama_cpp_SOURCE_DIR}/src
+    ${llama_cpp_SOURCE_DIR}/include
+    ${llama_cpp_SOURCE_DIR}/common
+    ${llama_cpp_SOURCE_DIR}/ggml/include
+    ${SQLite3_INCLUDE_DIRS}
+)
+
+target_compile_definitions(voice_agent_tests PRIVATE WEBRTC_POSIX)
+
+target_link_libraries(voice_agent_tests
+    PRIVATE
+        ${SQLite3_LIBRARIES}
+        nlohmann_json::nlohmann_json
+        llama-common
+        llama
+        ggml
+        Threads::Threads
+        GTest::gtest_main
+)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(voice_agent_tests PRIVATE "LINKER:--allow-multiple-definition")
+endif()
+
+add_test(NAME voice_agent_tests COMMAND voice_agent_tests)

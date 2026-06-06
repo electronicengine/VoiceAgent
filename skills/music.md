@@ -2,12 +2,10 @@
 {
   "name": "music",
   "description": "Muzik/sarki calma ve durdurma (mpv + yt-dlp).",
-  "triggers": ["müzik", "muzik", "şarkı", "sarki", "şarkıyı", "sarkiyi", "müziği", "muzigi", "mp3", "çal", "cal", "sustur", "durdur", "şarki", "ses aç", "ses kıs", "ses kis", "sesi"],
-  "priority": 10
 }
 ---
 Müzik / Şarkı Çalma:
-Kullanıcı "müzik çal", "şarkı çal", "X şarkısını aç", "YT Music'ten Y çal" gibi bir istekte bulunduğunda ASLA WebBrowserTool kullanma — headless tarayıcının ses çıkışı yok ve YT Music DRM gerektiriyor. Bunun yerine ShellTool ile mpv + yt-dlp kombinasyonunu kullan. mpv yt-dlp aracılığıyla YouTube'dan ses akışı çekip robotun PipeWire/Pulse hoparlör sink'ine basar.
+Kullanıcı "müzik çal", "şarkı çal", "X şarkısını aç", "YT Music'ten Y çal" gibi bir istekte bulunduğunda ASLA browser otomasyonu kullanma — headless tarayıcının ses çıkışı yok ve YT Music DRM gerektiriyor. Bunun yerine ShellTool ile mpv + yt-dlp kombinasyonunu kullan. mpv yt-dlp aracılığıyla YouTube'dan ses akışı çekip robotun PipeWire/Pulse hoparlör sink'ine basar.
 
 Çalma kuralları:
 - Yeni bir parça çalmadan önce çalan başka bir mpv varsa kapat: `pkill -x mpv 2>/dev/null; sleep 0.3`.

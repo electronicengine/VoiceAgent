@@ -19,16 +19,25 @@ bool MatchesToolName(const ToolDefinition& definition, const std::string& toolNa
     return std::find(definition.aliases.begin(), definition.aliases.end(), toolName) != definition.aliases.end();
 }
 
+bool ContainsAny(const std::string& haystack, const std::initializer_list<const char*> needles) {
+    for (const char* needle : needles) {
+        if (needle != nullptr && haystack.find(needle) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 AgentToolOrchestrator::AgentToolOrchestrator(
         IInterpreter& interpreter,
         const std::vector<ITool*>& tools,
         const AppConfig& config,
-        const SkillRegistry* skillRegistry)
+        RegistryController* registryController)
     : interpreter_(interpreter),
             tools_(tools),
-      skillRegistry_(skillRegistry),
+      registryController_(registryController),
       maxAgentSteps_(config.maxAgentSteps),
       maxSkillsPerTurn_(static_cast<std::size_t>(config.maxSkillsPerTurn > 0 ? config.maxSkillsPerTurn : 3)) {}
 
@@ -40,30 +49,14 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
     InterpreterInput currentInput;
     currentInput.text = userText;
 
-    if (skillRegistry_ != nullptr && !skillRegistry_->Empty()) {
-        const auto matched = skillRegistry_->MatchSkills(userText, maxSkillsPerTurn_);
-        if (!matched.empty()) {
-            std::cout << "Matched skills:";
-            for (const auto* skill : matched) {
-                std::cout << " " << skill->name;
-            }
-            std::cout << "\n";
-            for (const auto* skill : matched) {
-                std::cout << "--- [SKILL: " << skill->name << "] body ---\n"
-                          << skill->body << "\n--- [/SKILL] ---\n\n";
-            }
-            if (onAnnouncement) {
-                std::string names;
-                for (std::size_t i = 0; i < matched.size(); ++i) {
-                    if (i != 0) {
-                        names += ", ";
-                    }
-                    names += matched[i]->name;
-                }
-                onAnnouncement("Bir yetenek kullaniyorum: " + names + ".");
-            }
-            const std::string injection = SkillRegistry::RenderInjection(matched);
-            currentInput.text = injection + currentInput.text;
+    if (registryController_ != nullptr) {
+        std::string enhancedPrompt = registryController_->GetEnhancedPrompt(userText);
+        if (!enhancedPrompt.empty()) {
+            std::cout << "[Orchestrator] Enhanced prompt with registry matches:\n" << enhancedPrompt << "\n";
+            currentInput.text = enhancedPrompt + userText;
+        }else
+        {
+            std::cout << "[Orchestrator] No relevant registry entries found for the user input.\n";
         }
     }
 
@@ -79,44 +72,62 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
             return result;
         }
         if (response.Empty()) {
-            throw std::runtime_error("Interpreter returned an empty response.");
+            std::cout << "Interpreter returned an empty response. Asking the model to continue without ending the program.\n\n";
+            currentInput.text =
+                "Sistem notu: Son assistant cevabi bos geldi veya stream kayboldu. "
+                "Mevcut baglami koruyarak ayni goreve devam et. "
+                "Hedefe ulastiysan final cevabi ver. Ulasmadiysan gerekli arac cagrisini yeniden uret. "
+                "Bos cevap verme.";
+            currentInput.images.clear();
+            continue;
         }
 
-        const ToolCall call = ParseToolCall(response);
-        if (call.name.empty()) {
+        const std::vector<ToolCall> calls = ParseToolCalls(response);
+        if (calls.empty()) {
             std::cout << "No tool call detected in the response. Finalizing agent turn.\n\n";
             result.finalResponse = response;
             return result;
         }
 
-        ToolResult toolResult;
-        const ITool* tool = ResolveTool(call.name);
+        std::vector<std::pair<ToolCall, ToolResult>> stepResults;
+        for (const auto& call : calls) {
+            ToolResult toolResult;
+            const ITool* tool = ResolveTool(call.name);
 
-        std::cout << "Executing tool: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
-        if (onAnnouncement) {
-            onAnnouncement(call.name + " kullaniyorum.");
-        }
-        if (tool == nullptr) {
-            toolResult = ToolResult{
-                false,
-                false,
-                "Istenen arac kayitli degil.",
-                {{"reason", "unknown_tool"}, {"tool", call.name}}
-            };
-        } else {
-            toolResult = tool->Execute(call, token);
-        }
-        std::cout << "Tool execution result: " << toolResult.summary << "\n\n";
+            std::cout << "Executing tool: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
+            if (onAnnouncement) {
+                onAnnouncement(call.name + " kullaniyorum.");
+            }
+            if (tool == nullptr) {
+                toolResult = ToolResult{
+                    false,
+                    false,
+                    "Istenen arac kayitli degil.",
+                    {{"reason", "unknown_tool"}, {"tool", call.name}}
+                };
+            } else {
+                toolResult = tool->Execute(call, token);
+            }
+            std::cout << "Tool execution result: " << toolResult.summary << "\n\n";
 
-        result.executedCalls.push_back(call);
-        currentInput = FormatToolResultMessage(call, toolResult);
+            stepResults.push_back({call, toolResult});
+            result.executedCalls.push_back(call);
+        }
+
+        currentInput = FormatToolResultMessage(
+            stepResults,
+            userText
+        );
     }
 
-    throw std::runtime_error("Agent step limit reached before producing a final response.");
+    result.finalResponse = InterpreterResponse(); // Empty or failure
+    result.finalResponse.segments.push_back({ResponseSegmentType::Speech, "Üzgünüm, bu görevi belirlenen adım sınırında tamamlamayı beceremedim."});
+    return result;
 }
 
-ToolCall AgentToolOrchestrator::ParseToolCall(const InterpreterResponse& response) const {
+std::vector<ToolCall> AgentToolOrchestrator::ParseToolCalls(const InterpreterResponse& response) const {
     std::cout << response.DisplayText() << "\n\n";
+    std::vector<ToolCall> calls;
     
     for (const auto& segment : response.segments) {
         if (segment.type != ResponseSegmentType::Json) {
@@ -124,24 +135,36 @@ ToolCall AgentToolOrchestrator::ParseToolCall(const InterpreterResponse& respons
         }
 
         const nlohmann::json payload = nlohmann::json::parse(segment.content, nullptr, false);
-        if (payload.is_discarded() || !payload.is_object()) {
-            continue;
-        }
-        if (!payload.contains("tool") || !payload.at("tool").is_string()) {
+        if (payload.is_discarded()) {
             continue;
         }
 
-        ToolCall call;
-        call.name = payload.at("tool").get<std::string>();
-        if (payload.contains("arguments") && payload.at("arguments").is_object()) {
-            call.arguments = payload.at("arguments");
-        }
+        auto processPayload = [&](const nlohmann::json& p) {
+            if (!p.is_object() || !p.contains("tool") || !p.at("tool").is_string()) {
+                return;
+            }
 
-        std::cout << "Parsed tool call: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
-        return call;
+            ToolCall call;
+            call.name = p.at("tool").get<std::string>();
+            if (p.contains("arguments") && p.at("arguments").is_object()) {
+                call.arguments = p.at("arguments");
+            } else if (p.contains("parameters") && p.at("parameters").is_object()) {
+                call.arguments = p.at("parameters");
+            }
+            calls.push_back(call);
+            std::cout << "Parsed tool call: " << call.name << " with arguments: " << call.arguments.dump() << "\n\n";
+        };
+
+        if (payload.is_array()) {
+            for (const auto& item : payload) {
+                processPayload(item);
+            }
+        } else {
+            processPayload(payload);
+        }
     }
 
-    return ToolCall{};
+    return calls;
 }
 
 const ITool* AgentToolOrchestrator::ResolveTool(const std::string& toolName) const {
@@ -154,39 +177,49 @@ const ITool* AgentToolOrchestrator::ResolveTool(const std::string& toolName) con
     return nullptr;
 }
 
-InterpreterInput AgentToolOrchestrator::FormatToolResultMessage(const ToolCall& call, const ToolResult& result) const {
+InterpreterInput AgentToolOrchestrator::FormatToolResultMessage(
+    const std::vector<std::pair<ToolCall, ToolResult>>& stepResults,
+    const std::string& originalUserText) const {
     InterpreterInput input;
 
-    std::string message = "Arac sonucu\n";
-    message += "Arac: " + call.name + "\n";
-    message += std::string("Durum: ") + (result.succeeded ? "basarili" : "basarisiz") + "\n";
-    if (result.blockedByPolicy) {
-        message += "Politika: bu islem onay gerektirdigi icin engellendi.\n";
-    }
-    if (result.output.contains("exitCode") && result.output.at("exitCode").is_number_integer()) {
-        message += "Exit code: " + std::to_string(result.output.at("exitCode").get<int>()) + "\n";
-    }
-    if (result.output.contains("reason") && result.output.at("reason").is_string()) {
-        message += "Reason: " + result.output.at("reason").get<std::string>() + "\n";
-    }
-    if (!result.imageAttachments.empty()) {
-        message += "Gorsel ekler: " + std::to_string(result.imageAttachments.size()) + "\n";
-        message += "Not: Ekli ekran goruntulerini inceleyerek cevabini buna gore guncelle.\n";
-    }
-    message += "Ozet: " + result.summary;
+    std::string message = "Arac sonuclari\n";
+    message += "Orijinal istek: " + originalUserText + "\n";
+    
+    for (size_t i = 0; i < stepResults.size(); ++i) {
+        const auto& call = stepResults[i].first;
+        const auto& result = stepResults[i].second;
 
-    if (!result.output.empty()) {
-        message += "\nCikti:\n" + result.output.dump(2);
+        message += "\n--- Arac " + std::to_string(i + 1) + " ---\n";
+        message += "Arac: " + call.name + "\n";
+        message += std::string("Durum: ") + (result.succeeded ? "basarili" : "basarisiz") + "\n";
+        if (result.blockedByPolicy) {
+            message += "Politika: bu islem onay gerektirdigi icin engellendi.\n";
+        }
+        if (result.output.contains("exitCode") && result.output.at("exitCode").is_number_integer()) {
+            message += "Exit code: " + std::to_string(result.output.at("exitCode").get<int>()) + "\n";
+        }
+        if (result.output.contains("reason") && result.output.at("reason").is_string()) {
+            message += "Reason: " + result.output.at("reason").get<std::string>() + "\n";
+        }
+        message += "Ozet: " + result.summary + "\n";
+
+        if (!result.output.empty()) {
+            message += "Cikti:\n" + result.output.dump(2) + "\n";
+        }
+
+        for (const auto& attachment : result.imageAttachments) {
+            input.images.push_back(InterpreterImageInput{attachment.filePath, attachment.detail});
+        }
+    }
+
+    if (!input.images.empty()) {
+        message += "\nNot: Ekte " + std::to_string(input.images.size()) + " adet gorsel bulunmaktadir. Bunlari inceleyerek cevabini buna gore guncelle.\n";
     }
 
     message += "\nYonlendirme: Hedefe ulastiysan kullaniciya final cevabi ver. Hedefe ulasmadiysan ve adim hakkin kaldiysa yeni bir arac veya farkli bir yontem dene; kullanicidan sadece tekrar denemek icin yonlendirme isteme.";
+    message += " Orijinal istekte kalici bir script veya skill yazma talebi varsa, bunu ilgili tool ile tamamlamadan final verme.";
 
     input.text = message;
-    input.images.reserve(result.imageAttachments.size());
-    for (const auto& attachment : result.imageAttachments) {
-        input.images.push_back(InterpreterImageInput{attachment.filePath, attachment.detail});
-    }
-
     return input;
 }
 

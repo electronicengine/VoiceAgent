@@ -57,7 +57,8 @@ void TextAgent::Run() {
         );
         const InterpreterResponse& response = turnResult.finalResponse;
         if (response.Empty()) {
-            throw std::runtime_error("Interpreter returned an empty response.");
+            std::cout << "Model bu turda bos bir cevap dondurdu. Program acik kaldi; tekrar deneyebilirsiniz.\n\n";
+            continue;
         }
 
         const std::string displayText = response.DisplayText();

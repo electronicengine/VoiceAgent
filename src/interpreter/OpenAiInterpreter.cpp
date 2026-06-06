@@ -71,6 +71,9 @@ bool IsToolCallPayload(const json& payload) {
     if (payload.contains("arguments") && !payload.at("arguments").is_object()) {
         return false;
     }
+    if (payload.contains("parameters") && !payload.at("parameters").is_object()) {
+        return false;
+    }
     return true;
 }
 
@@ -184,6 +187,7 @@ InterpreterResponse OpenAiInterpreter::Interpret(
         throw std::runtime_error("OpenAI session is not initialized.");
     }
 
+    const AssistantMessageSnapshot previousAssistantMessage = FetchLatestAssistantMessageSnapshot();
     AddUserMessageToThread(input);
     StreamParseState state;
     state.cancellationToken = token;
@@ -213,11 +217,21 @@ InterpreterResponse OpenAiInterpreter::Interpret(
     }
 
     const InterpreterResponse finalResponse = BuildStructuredResponse(state.rawResponse);
-    if (finalResponse.Empty()) {
-        throw std::runtime_error("OpenAI returned an empty assistant response.");
+    if (!finalResponse.Empty()) {
+        return finalResponse;
     }
 
-    return finalResponse;
+    LogInterpreterMessage("empty_response", "Streaming response was empty; fetching an assistant message newer than the previous turn.");
+    const InterpreterResponse recoveredResponse = BuildStructuredResponse(
+        FetchAssistantMessageTextAfter(previousAssistantMessage.id)
+    );
+    if (!recoveredResponse.Empty()) {
+        LogInterpreterMessage("empty_response", "Recovered assistant response from thread history.");
+        return recoveredResponse;
+    }
+
+    LogInterpreterMessage("empty_response", "No assistant text could be recovered from thread history.");
+    return InterpreterResponse{};
 }
 
 std::vector<std::string> OpenAiInterpreter::DefaultHeaders() const {
@@ -562,6 +576,98 @@ std::string OpenAiInterpreter::ExtractMessageText(const json& messageJson) const
     }
 
     return combined.str();
+}
+
+OpenAiInterpreter::AssistantMessageSnapshot OpenAiInterpreter::FetchLatestAssistantMessageSnapshot() const {
+    HttpRequest request;
+    request.url = config_.openAiBaseUrl + "/threads/" + threadId_ + "/messages?order=desc&limit=10";
+    request.headers = DefaultHeaders();
+
+    const HttpResponse response = httpClient_.Get(request);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw std::runtime_error(
+            "OpenAI thread messages fetch failed with HTTP " +
+            std::to_string(response.statusCode) + ": " + response.body
+        );
+    }
+
+    const json responseJson = json::parse(response.body, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) {
+        throw std::runtime_error("OpenAI thread messages returned invalid JSON.");
+    }
+    if (!responseJson.contains("data") || !responseJson.at("data").is_array()) {
+        return AssistantMessageSnapshot{};
+    }
+
+    for (const auto& message : responseJson.at("data")) {
+        if (!message.is_object()) {
+            continue;
+        }
+        if (!message.contains("role") || !message.at("role").is_string()) {
+            continue;
+        }
+        if (message.at("role").get<std::string>() != "assistant") {
+            continue;
+        }
+
+        const std::string text = ExtractMessageText(message);
+        if (!Trim(text).empty()) {
+            AssistantMessageSnapshot snapshot;
+            if (message.contains("id") && message.at("id").is_string()) {
+                snapshot.id = message.at("id").get<std::string>();
+            }
+            snapshot.text = text;
+            return snapshot;
+        }
+    }
+
+    return AssistantMessageSnapshot{};
+}
+
+std::string OpenAiInterpreter::FetchAssistantMessageTextAfter(const std::string& previousAssistantMessageId) const {
+    HttpRequest request;
+    request.url = config_.openAiBaseUrl + "/threads/" + threadId_ + "/messages?order=desc&limit=20";
+    request.headers = DefaultHeaders();
+
+    const HttpResponse response = httpClient_.Get(request);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw std::runtime_error(
+            "OpenAI thread messages fetch failed with HTTP " +
+            std::to_string(response.statusCode) + ": " + response.body
+        );
+    }
+
+    const json responseJson = json::parse(response.body, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) {
+        throw std::runtime_error("OpenAI thread messages returned invalid JSON.");
+    }
+    if (!responseJson.contains("data") || !responseJson.at("data").is_array()) {
+        return "";
+    }
+
+    for (const auto& message : responseJson.at("data")) {
+        if (!message.is_object()) {
+            continue;
+        }
+        if (message.contains("id") && message.at("id").is_string() &&
+            !previousAssistantMessageId.empty() &&
+            message.at("id").get<std::string>() == previousAssistantMessageId) {
+            return "";
+        }
+        if (!message.contains("role") || !message.at("role").is_string()) {
+            continue;
+        }
+        if (message.at("role").get<std::string>() != "assistant") {
+            continue;
+        }
+
+        const std::string text = ExtractMessageText(message);
+        if (!Trim(text).empty()) {
+            return text;
+        }
+    }
+
+    return "";
 }
 
 InterpreterResponse OpenAiInterpreter::BuildStructuredResponse(const std::string& rawText) const {

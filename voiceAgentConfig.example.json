@@ -7,10 +7,13 @@
   "accountsFilePath": "account.json",
   "accountsRootDir": ".voice_agent_browser/accounts",
   "browserPromptTimeoutSeconds": 240,
+  "pythonToolScriptRoot": "scripts/",
+  "pythonWebRunnerPath": "scripts/wb_runner.py",
   "skills": {
     "skillsEnabled": true,
     "skillsDir": "skills",
-    "experiencesFilePath": "experiences.md",
+    "llamaEmbedModelPath": "models/granite-embedding-30m-english-Q8_0.gguf",
+    "experiencesFilePath": "experiences/experiences.md",
     "maxExperienceLines": 100,
     "maxSkillsPerTurn": 3
   },

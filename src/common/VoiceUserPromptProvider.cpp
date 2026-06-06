@@ -35,7 +35,7 @@ PromptResult VoiceUserPromptProvider::Ask(
         return result;
     }
 
-    std::cout << "[WebBrowserTool][prompt] " << question << "\n" << std::flush;
+    std::cout << "[BrowserPrompt][prompt] " << question << "\n" << std::flush;
 
     InterpreterResponse response;
     response.segments.push_back({ResponseSegmentType::Speech, question, true});
@@ -72,7 +72,7 @@ PromptResult VoiceUserPromptProvider::Ask(
         return result;
     }
 
-    std::cout << "[WebBrowserTool][prompt-answer] " << transcript << "\n" << std::flush;
+    std::cout << "[BrowserPrompt][prompt-answer] " << transcript << "\n" << std::flush;
     result.ok = true;
     result.answer = transcript;
     return result;

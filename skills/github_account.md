@@ -1,7 +1,7 @@
 ---
 {
   "name": "github_account",
-  "description": "GitHub kisisel hesap erisimi (WebBrowserTool accountId=github_main).",
+  "description": "GitHub kisisel hesap erisimi (PythonTool accountId=github_main).",
   "triggers": ["github", "repo", "repolarım", "repolarim", "pull request", "issue", "commit"],
   "account": {
     "id": "github_main",
@@ -13,7 +13,7 @@
 }
 ---
 Hesap (Account) Modu — GitHub:
-Kullanici GitHub repolarim/issue'larim/PR'larim gibi kisisel GitHub hesabi gerektiren bir istekte bulundugunda DOGRUDAN WebBrowserTool'u `accountId: "github_main"` parametresiyle cagir.
+Kullanici GitHub repolarim/issue'larim/PR'larim gibi kisisel GitHub hesabi gerektiren bir istekte bulundugunda DOGRUDAN PythonTool'u `accountId: "github_main"` parametresiyle cagir.
 Sayfaya girdiğinde "Manage cookie preferences" modal'i veya cookie tercih kutusu çıkarsa bunu runner'dan bekleme. Gerekiyorsa `steps` içine modal kapatma / kabul adimlarini acikca ekle: modal'i bekle, gerekirse scroll yap, tum ilgili secenekleri accept et ve sonra "Save changes" veya benzeri butona bas.
 
 
@@ -23,8 +23,9 @@ Sayfaya girdiğinde "Manage cookie preferences" modal'i veya cookie tercih kutus
 
 Ornek:
 {
-  "tool": "WebBrowserTool",
+  "tool": "PythonTool",
   "arguments": {
+    "runner": "webbrowser",
     "accountId": "github_main",
     "steps": [
       { "action": "goto", "url": "https://github.com/issues" },
@@ -41,8 +42,9 @@ Ornek:
 
 GitHub cookie modal'i belirginse daha acik bir plan kur:
 {
-  "tool": "WebBrowserTool",
+  "tool": "PythonTool",
   "arguments": {
+    "runner": "webbrowser",
     "accountId": "github_main",
     "steps": [
       { "action": "goto", "url": "https://github.com/issues" },

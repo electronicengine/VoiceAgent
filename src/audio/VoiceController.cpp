@@ -260,7 +260,7 @@ bool VoiceController::CaptureNextUtterance(
             cv.notify_all();
         };
         // Suppress barge-in while we wait so the user's spoken answer does not
-        // cancel the turn that is currently running the WebBrowserTool.
+        // cancel the turn that is currently running a long web automation tool.
         onBargeIn_ = []() {};
     }
 

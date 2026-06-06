@@ -1,0 +1,68 @@
+#ifndef LLAMA_OPERATOR_H
+#define LLAMA_OPERATOR_H
+
+#include "llama.h"
+#include "common.h"
+#include "common/operator.h"
+#include <string>
+#include <vector>
+#include <functional>
+#include <atomic>
+
+namespace voice_agent {
+
+class LlamaOperator : public Operator {
+public:
+    LlamaOperator();
+    ~LlamaOperator();
+
+    bool initialize() override;
+    void shutdown() override;
+    bool isReady() const noexcept override;
+
+    void batch_add_seq(llama_batch & batch, const std::vector<int32_t> & tokens, llama_seq_id seq_id);
+    void batch_decode(llama_context * ctx, llama_batch & batch, float * output, int n_seq, int n_embd, int embd_norm);
+
+    void setOptions(int ngl = 99, int nThreads = 4, int n_ctx = 2048, float minP = 0.05f, float temp = 0.8f, int topK = 50, float topP = 0.9);
+    bool loadEmbedModel(const std::string & modelPath, const enum llama_pooling_type poolingType);
+    bool loadChatModel(const std::string& modelPath);
+    void unloadModel();
+
+    void stopGenerateResponse();
+    void setCallBackFunction(std::function<void(const std::string&)> func);
+    std::string generateResponse(const std::string& prompt);
+    void chat(const std::string &userInput);
+    virtual std::vector<float> calculateEmbeddings(const std::string& text);
+    virtual float getSimilarity(const std::vector<float>& Emb1, const std::vector<float>& Emb2){ 
+        if (Emb1.empty() || Emb2.empty() || Emb1.size() != Emb2.size()) return 0.0f;
+        return common_embd_similarity_cos(&Emb1[0], &Emb2[0], Emb1.size()); 
+    }
+    virtual void unloadEmbedModel();
+    void setSystemMessage(const std::string& systemMsg);
+
+private:
+    int _nThreads;
+    int _ngl;
+    int _nCtx;
+    float _minP;
+    float _temp;
+    int _topK;
+    float _topP;
+
+    bool _modelLoaded;
+    llama_model* _model;
+    llama_context* _ctx;
+    llama_sampler* _smpl;
+    llama_batch* _batch;
+    std::string _systemMessage;
+    std::atomic<bool> _running;
+
+    const llama_vocab* _vocab;
+    std::vector<llama_chat_message> _messages;
+    std::function<void(const std::string&)> _responseCallbackFunction;
+
+};
+
+} // namespace voice_agent
+
+#endif //LLAMA_OPERATOR_H

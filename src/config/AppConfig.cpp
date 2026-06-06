@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
+#include <iostream>
 namespace voice_agent {
 
 namespace {
@@ -94,11 +94,21 @@ std::filesystem::path ResolveConfigPath() {
     throw std::runtime_error(message.str());
 }
 
+std::filesystem::path ResolveExecutableDir() {
+    std::error_code ec;
+    const std::filesystem::path executablePath = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (!ec && !executablePath.empty()) {
+        return executablePath.parent_path();
+    }
+    return std::filesystem::current_path();
+}
+
 std::filesystem::path ResolveOptionalPath(
-    const std::filesystem::path& configPath,
+    const std::filesystem::path& baseDir,
     const std::string& configuredPath
 ) {
     const std::string trimmedPath = Trim(configuredPath);
+    std::cout << "Resolving path. baseDir: " << baseDir << ", configuredPath: '" << configuredPath << "', trimmedPath: '" << trimmedPath << "'\n";
     if (trimmedPath.empty()) {
         return {};
     }
@@ -108,7 +118,7 @@ std::filesystem::path ResolveOptionalPath(
         return path;
     }
 
-    return (configPath.parent_path() / path).lexically_normal();
+    return (baseDir / path).lexically_normal();
 }
 
 std::string LoadTextFile(const std::filesystem::path& filePath, const char* description) {
@@ -264,6 +274,7 @@ bool ReadBoolField(
 
 AppConfig LoadConfig() {
     const std::filesystem::path configPath = ResolveConfigPath();
+    const std::filesystem::path runtimeBaseDir = ResolveExecutableDir();
     const nlohmann::json& configJson = LoadJsonConfig(configPath);
     const nlohmann::json* commonJson = ReadSection(configJson, "common");
     const nlohmann::json* transcriberJson = ReadSection(configJson, "transcriber");
@@ -399,7 +410,8 @@ AppConfig LoadConfig() {
     config.dangerousShellEnabled = ReadBoolField(commonJson, configJson, "dangerousShellEnabled", false);
     config.alsaCaptureDevice = ReadStringField(commonJson, configJson, "alsaCaptureDevice");
     config.alsaPlaybackDevice = ReadStringField(commonJson, configJson, "alsaPlaybackDevice");
-    config.webBrowserRunnerPath = ReadStringField(configJson, "webBrowserRunnerPath", "src/tools/webbrowser_runner.py");
+    config.pythonToolScriptRoot = ReadStringField(configJson, "pythonToolScriptRoot", "scripts");
+    config.pythonWebRunnerPath = ReadStringField(configJson, "pythonWebRunnerPath", "scripts/wb_runner.py");
     config.accountsFilePath = ReadStringField(configJson, "accountsFilePath", "account.json");
     config.accountsRootDir = ReadStringField(configJson, "accountsRootDir", ".voice_agent_browser/accounts");
     config.browserPromptTimeoutSeconds = ReadPositiveIntField(
@@ -410,8 +422,9 @@ AppConfig LoadConfig() {
         const nlohmann::json* skillsJson = ReadSection(configJson, "skills");
         config.skillsEnabled = ReadBoolField(skillsJson, configJson, "skillsEnabled", true);
         config.skillsDir = ReadStringField(skillsJson, configJson, "skillsDir", "skills");
+        config.llamaEmbedModelPath = ReadStringField(skillsJson, configJson, "llamaEmbedModelPath", "");
         config.experiencesFilePath = ReadStringField(
-            skillsJson, configJson, "experiencesFilePath", "experiences.md"
+            skillsJson, configJson, "experiencesFilePath", "experiences/experiences.md"
         );
         config.maxExperienceLines = ReadPositiveIntField(
             skillsJson, configJson, "maxExperienceLines", 100
@@ -422,22 +435,27 @@ AppConfig LoadConfig() {
     }
 
     {
-        const std::filesystem::path resolvedAccountsFile = ResolveOptionalPath(configPath, config.accountsFilePath);
+        const std::filesystem::path resolvedAccountsFile = ResolveOptionalPath(runtimeBaseDir, config.accountsFilePath);
         if (!resolvedAccountsFile.empty()) {
             config.resolvedAccountsFilePath = resolvedAccountsFile.string();
         }
-        const std::filesystem::path resolvedAccountsRoot = ResolveOptionalPath(configPath, config.accountsRootDir);
+        const std::filesystem::path resolvedAccountsRoot = ResolveOptionalPath(runtimeBaseDir, config.accountsRootDir);
         if (!resolvedAccountsRoot.empty()) {
             config.resolvedAccountsRootDir = resolvedAccountsRoot.string();
         }
-        const std::filesystem::path resolvedSkills = ResolveOptionalPath(configPath, config.skillsDir);
-        if (!resolvedSkills.empty()) {
-            config.resolvedSkillsDir = resolvedSkills.string();
+        const std::filesystem::path fixedSkillsRoot = runtimeBaseDir / "skills";
+        const std::filesystem::path fixedScriptsRoot = runtimeBaseDir / "scripts";
+        const std::filesystem::path fixedExperiencesPath = runtimeBaseDir / "experiences" / "experiences.md";
+
+        config.resolvedSkillsDir = fixedSkillsRoot.lexically_normal().string();
+        config.resolvedPythonToolScriptRoot = fixedScriptsRoot.lexically_normal().string();
+        const std::filesystem::path resolvedPythonWebRunner = ResolveOptionalPath(runtimeBaseDir, config.pythonWebRunnerPath);
+        if (!resolvedPythonWebRunner.empty()) {
+            config.resolvedPythonWebRunnerPath = resolvedPythonWebRunner.string();
         }
-        const std::filesystem::path resolvedExperiences = ResolveOptionalPath(configPath, config.experiencesFilePath);
-        if (!resolvedExperiences.empty()) {
-            config.resolvedExperiencesFilePath = resolvedExperiences.string();
-            std::ifstream file(resolvedExperiences);
+        config.resolvedExperiencesFilePath = fixedExperiencesPath.lexically_normal().string();
+        {
+            std::ifstream file(fixedExperiencesPath);
             if (file) {
                 std::ostringstream buf;
                 buf << file.rdbuf();
@@ -512,7 +530,8 @@ AppConfig LoadConfig() {
         throw std::runtime_error("openAiApiKey is required in the JSON config.");
     }
 
-    const std::filesystem::path promptPath = ResolveOptionalPath(configPath, config.systemPromptFilePath);
+    const std::filesystem::path promptPath = ResolveOptionalPath(runtimeBaseDir, config.systemPromptFilePath);
+    std::cout << "Using system prompt from: " << (promptPath.empty() ? "config field" : promptPath.string()) << "\n";
     if (promptPath.empty()) {
         config.systemPromptText = ReadStringField(
             interpreterOpenAiJson,

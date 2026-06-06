@@ -43,12 +43,18 @@ struct AppConfig {
     bool dangerousShellEnabled = false;
     std::string alsaCaptureDevice;
     std::string alsaPlaybackDevice;
-    std::string webBrowserRunnerPath;
+    std::string pythonToolScriptRoot;
+    std::string resolvedPythonToolScriptRoot;
+    std::string pythonWebRunnerPath;
+    std::string resolvedPythonWebRunnerPath;
     std::string accountsFilePath;
     std::string resolvedAccountsFilePath;
     std::string accountsRootDir;
     std::string resolvedAccountsRootDir;
     int browserPromptTimeoutSeconds = 180;
+
+    // Llama / Embeddings
+    std::string llamaEmbedModelPath;
 
     // Skill / experience system
     bool skillsEnabled = true;

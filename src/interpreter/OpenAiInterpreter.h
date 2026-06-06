@@ -21,6 +21,11 @@ public:
         const CancellationToken* token = nullptr) override;
 
 private:
+    struct AssistantMessageSnapshot {
+        std::string id;
+        std::string text;
+    };
+
     struct StreamParseState {
         std::string sseBuffer;
         std::string rawResponse;
@@ -46,6 +51,8 @@ private:
     nlohmann::json BuildMessageContent(const InterpreterInput& input) const;
     void CreateRun(StreamParseState& state, const InterpreterStreamCallback& onPartialResponse) const;
     std::string ExtractMessageText(const nlohmann::json& messageJson) const;
+    AssistantMessageSnapshot FetchLatestAssistantMessageSnapshot() const;
+    std::string FetchAssistantMessageTextAfter(const std::string& previousAssistantMessageId) const;
     InterpreterResponse BuildStructuredResponse(const std::string& rawText) const;
     void ConsumeStreamingChunk(
         const std::string& chunk,

@@ -14,12 +14,12 @@
 #include "config/AccountStore.h"
 #include "agent/TextAgent.h"
 #include "interpreter/OpenAiInterpreter.h"
-#include "skills/SkillRegistry.h"
+#include "registry/RegistryController.h"
 #include "tools/PythonTool.h"
-#include "tools/RememberTool.h"
+#include "tools/ProjectFilesTool.h"
+#include "tools/RegistryTool.h"
 #include "synthesizer/AzureRestSynthesizer.h"
 #include "tools/ShellTool.h"
-#include "tools/WebBrowserTool.h"
 #include "transcriber/ITranscriber.h"
 #include "transcriber/DeepgramTranscriber.h"
 #include "transcriber/AzureTranscriber.h"
@@ -35,37 +35,28 @@ namespace {
 std::string BuildSystemPrompt(
     const std::string& staticPromptText,
     const std::vector<voice_agent::ToolDefinition>& toolDefinitions,
-    int maxAgentSteps,
-    const std::string& skillIndex,
-    const std::string& experiencesText) {
+    int maxAgentSteps) {
+
     nlohmann::json toolList = nlohmann::json::array();
     for (const auto& toolDefinition : toolDefinitions) {
         toolList.push_back({
             {"name", toolDefinition.name},
             {"description", toolDefinition.description},
-            {"parameters", toolDefinition.parameters},
+            {"arguments", toolDefinition.parameters},
             {"aliases", toolDefinition.aliases},
         });
     }
 
     std::ostringstream prompt;
-    prompt << "* En fazla " << maxAgentSteps << " adimda sonuca git." << "\n\n";
     prompt << staticPromptText << "\n\n";
-
-    if (!skillIndex.empty()) {
-        prompt << "## Skill Index\n";
-        prompt << "Asagidaki skill'lerin detayli kullanim talimatlari, kullanici girdisi "
-                  "ilgili anahtar kelimeleri icerdiginde otomatik olarak [SKILL: name] "
-                  "bloklari halinde mesajinin basina eklenir. Sen sadece konuyu bil; "
-                  "detay icin enjekte edilen blogu oku.\n";
-        prompt << skillIndex << "\n";
-    }
-    if (!experiencesText.empty()) {
-        prompt << "## Onceki Deneyimlerim\n";
-        prompt << "Bu satirlar gecmis turlardan ogrenilmis kisa derslerdir. Ilgili "
-                  "oldugunda kullan.\n";
-        prompt << experiencesText << "\n\n";
-    }
+        if (!toolList.empty()) {
+            prompt << "## Kullanabilecegin Araçlar\n";
+            prompt << "Asagidaki araçlari kullanabilirsin. Araclari cagirirken tanimlarinda belirtilen "
+                    "parametreleri kullanman gerekir. Araclarin parametre tanimlarini dikkatlice incele ve "
+                    "doğru şekilde kullan.\n";
+            prompt << toolList.dump(2) << "\n\n";
+        }
+    prompt << "* En fazla " << maxAgentSteps << " adimda sonuca git." << "\n\n";
 
     std::cout << "System prompt:\n" << prompt.str() << "\n\n";
     return prompt.str();
@@ -98,50 +89,60 @@ int main() {
         }
 
         auto interpreter = std::make_unique<voice_agent::OpenAiInterpreter>(config);
-        voice_agent::ShellTool shellTool;
-        voice_agent::PythonTool pythonTool;
-        voice_agent::SkillRegistry skillRegistry;
-        if (config.skillsEnabled && !config.resolvedSkillsDir.empty()) {
-            skillRegistry.Load(config.resolvedSkillsDir);
-            std::cout << "Loaded " << skillRegistry.Skills().size()
-                      << " skills from " << config.resolvedSkillsDir << "\n";
-        }
-        voice_agent::WebBrowserTool webBrowserTool(config, &accountStore, &skillRegistry);
-        voice_agent::RememberTool rememberTool(
-            config.resolvedExperiencesFilePath,
-            config.maxExperienceLines
+        voice_agent::ShellTool shellTool(
+            config.resolvedPythonToolScriptRoot.empty()
+                ? std::filesystem::absolute("scripts")
+                : std::filesystem::path(config.resolvedPythonToolScriptRoot)
         );
-        if (!config.resolvedExperiencesFilePath.empty()) {
-            std::cout << "Experiences file: " << config.resolvedExperiencesFilePath
-                      << " (" << (config.experiencesText.empty() ? 0 : 1)
-                      << " loaded section)\n";
+
+        voice_agent::LlamaOperator llama;
+        if (!config.llamaEmbedModelPath.empty()) {
+            bool ret = llama.loadEmbedModel(config.llamaEmbedModelPath, LLAMA_POOLING_TYPE_CLS);
+            std::cout << "Llama embed model " << (ret ? "success" : "failed") << ": " << config.llamaEmbedModelPath << "\n";
         }
 
+        voice_agent::RegistryController registryController("registry.db", llama);
+        if (registryController.Initialize()) {
+            std::cout << "Registry system initialized.\n";
+
+        }
+
+        voice_agent::PythonTool pythonTool(config, &accountStore);
+        
+        voice_agent::ProjectFilesTool projectFilesTool(
+            config.resolvedPythonToolScriptRoot.empty()
+                ? std::filesystem::absolute("scripts")
+                : std::filesystem::path(config.resolvedPythonToolScriptRoot)
+        );
+
+        voice_agent::RegistryTool registryTool(
+            registryController,
+            std::filesystem::current_path()
+        );
+
         std::vector<voice_agent::ITool*> tools{
-            &shellTool, &pythonTool, &webBrowserTool, &rememberTool
+            &shellTool, &pythonTool, &projectFilesTool, &registryTool
         };
         std::vector<voice_agent::ToolDefinition> toolDefinitions{
             shellTool.Definition(),
             pythonTool.Definition(),
-            webBrowserTool.Definition(),
-            rememberTool.Definition()
+            projectFilesTool.Definition(),
+            registryTool.Definition()
         };
         voice_agent::AgentToolOrchestrator agentOrchestrator(
-            *interpreter, tools, config, &skillRegistry
+            *interpreter, tools, config, &registryController
         );
         const std::string systemPrompt = BuildSystemPrompt(
             config.systemPromptText,
             toolDefinitions,
-            config.maxAgentSteps,
-            skillRegistry.RenderIndex(),
-            config.experiencesText
+            config.maxAgentSteps
         );
 
         std::unique_ptr<voice_agent::IUserPromptProvider> promptProvider;
         std::unique_ptr<voice_agent::Agent> agent;
         if (config.agentMode == "text") {
             promptProvider = std::make_unique<voice_agent::StdinUserPromptProvider>();
-            webBrowserTool.SetUserPromptProvider(promptProvider.get());
+            pythonTool.SetUserPromptProvider(promptProvider.get());
             agent = std::make_unique<voice_agent::TextAgent>(
                 std::move(interpreter),
                 systemPrompt,
@@ -172,7 +173,7 @@ int main() {
             promptProvider = std::make_unique<voice_agent::VoiceUserPromptProvider>(
                 voiceController.get(), synthesizer.get(), transcriber.get()
             );
-            webBrowserTool.SetUserPromptProvider(promptProvider.get());
+            pythonTool.SetUserPromptProvider(promptProvider.get());
 
             agent = std::make_unique<voice_agent::VoiceAgent>(
                 std::move(transcriber),

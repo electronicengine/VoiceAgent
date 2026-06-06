@@ -18,7 +18,7 @@ PromptResult StdinUserPromptProvider::Ask(
         return result;
     }
 
-    std::cout << "\n[WebBrowserTool] " << question << "\nYanit: " << std::flush;
+    std::cout << "\n[BrowserPrompt] " << question << "\nYanit: " << std::flush;
 
     std::string line;
     if (!std::getline(std::cin, line)) {
