@@ -50,7 +50,7 @@ std::string RegistryController::GetEnhancedPrompt(const std::string& userText, i
     std::ostringstream oss;
 
     // 1. Skill Matching
-    auto matchedSkills = skills_->MatchSkills(userText, 0.4f, skillLimit);
+    auto matchedSkills = skills_->MatchSkills(userText, 0.7f, skillLimit);
     for (const auto& skill : matchedSkills) {
         oss << "--- [SKILL: " << skill.name << "] body ---\n"
             << skill.body << "\n--- [/SKILL] ---\n\n";

@@ -27,10 +27,11 @@ Drive icin `drive.google.com`,
 Takvim icin `calendar.google.com`.
 Tablo ve dökümanlar için 'https://docs.google.com/'
 
+
 Kullanıcı bir adrese mail göndermeni istediğinde:
 
 1-) web tarayıcı ile mail.google.com adresine git.
-2-) Compose ("Oluştur") butonunu bekle ve tıkla, 
-3-) Alıcı (To), Konu (Subject), İleti Gövdesi (Body)   alanlarını doldur.
-4-) Her doldurmada sonra diğerine geçmek için `{"action":"press","key":"Tab"}` ekleyebilirsin.
-5-) Gönder butonuna bas. buton, çalışmazsa Ctrl+Enter klavye kısayolu kullan.
+2-) Compose ("Oluştur") butonunu bekle ve tıkla, ardından kutunun render olması için kısa bekle:
+3-) Alıcı (To) alanı doldurduktan sonra adresi onaylatmak için `{"action":"press","key":"Tab"}` ekle.
+4-) Konu (Subject), İleti Gövdesi (Body) alanlarını doldur.
+5-) Gönder butonuna tıkla. Eğer çalışmazsa Ctrl+Enter klavye kısayolu kullan.
