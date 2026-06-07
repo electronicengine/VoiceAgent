@@ -65,6 +65,13 @@ struct AppConfig {
     std::string experiencesText;
     int maxExperienceLines = 100;
     int maxSkillsPerTurn = 3;
+
+    // Robot interface config
+    bool robotInterfaceEnabled = true;
+    std::string robotIp = "127.0.0.1";
+    int robotSendPort = 5005;
+    int robotRecvPort = 5006;
+    std::string robotConfigFilePath = "/usr/local/etc/gesture_config_tr.json";
 };
 
 AppConfig LoadConfig();

@@ -1,5 +1,6 @@
 #include "ProjectFilesToolTest.h"
 #include "tools/ProjectFilesTool.h"
+#include "agent/AgentOrchestrator.h"
 #include <gtest/gtest.h>
 #include <fstream>
 
@@ -16,7 +17,7 @@ TEST_F(ProjectFilesToolTest, TestScriptCreationThroughOrchestrator) {
     interpreter.responses.push_back(MakeSpeechResponse("tamam"));
 
     AppConfig config; config.maxAgentSteps = 2;
-    AgentToolOrchestrator orchestrator(interpreter, {&pft}, config, nullptr);
+    AgentOrchestrator orchestrator(interpreter, {&pft}, config, nullptr);
     orchestrator.RunTurn("script yaz", {}, nullptr, {});
 
     EXPECT_TRUE(std::filesystem::exists(scriptFile));

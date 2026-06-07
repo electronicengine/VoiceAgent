@@ -1,6 +1,6 @@
 #pragma once
 
-#include "agent/AgentToolOrchestrator.h"
+#include "agent/AgentOrchestrator.h"
 #include "interpreter/IInterpreter.h"
 #include "tools/ITool.h"
 #include "config/AppConfig.h"
@@ -34,7 +34,7 @@ public:
     mutable int executedCount = 0;
 };
 
-class AgentToolOrchestratorTest : public ::testing::Test {
+class AgentOrchestratorTest : public ::testing::Test {
 protected:
     void SetUp() override {}
 };

@@ -24,7 +24,7 @@ public:
         std::unique_ptr<ISynthesizer> synthesizer,
         std::unique_ptr<VoiceController> voiceController,
         std::string systemPrompt,
-        AgentToolOrchestrator agentOrchestrator
+        AgentOrchestrator agentOrchestrator
     );
     ~VoiceAgent() override;
 

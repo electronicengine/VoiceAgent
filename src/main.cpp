@@ -1,4 +1,4 @@
-#include "agent/AgentToolOrchestrator.h"
+#include "agent/AgentOrchestrator.h"
 #include <nlohmann/json.hpp>
 
 #include <iostream>
@@ -28,6 +28,8 @@
 #include "audio/AlsaSpeaker.h"
 #include "audio/VoiceController.h"
 #include "audio/VoiceActivityDetector.h"
+#include "interface/RobotControllerInterface.h"
+#include "interface/UdpClientSocket.h"
 #include "common/logger.h"
 #include <vector>
 
@@ -129,7 +131,7 @@ int main() {
             projectFilesTool.Definition(),
             registryTool.Definition()
         };
-        voice_agent::AgentToolOrchestrator agentOrchestrator(
+        voice_agent::AgentOrchestrator agentOrchestrator(
             *interpreter, tools, config, &registryController
         );
         const std::string systemPrompt = BuildSystemPrompt(
@@ -183,6 +185,14 @@ int main() {
                 systemPrompt,
                 std::move(agentOrchestrator)
             );
+        }
+
+        if (config.robotInterfaceEnabled) {
+            auto robotInterface = std::make_shared<voice_agent::RobotControllerInterface>(
+                llama, std::make_unique<voice_agent::UdpClientSocket>(), config.robotIp, config.robotSendPort, config.robotRecvPort, config.robotConfigFilePath
+            );
+            agent->AddInterface(robotInterface);
+            INFO("Robot controller interface initialized on {}:{} -> {}", config.robotIp, config.robotRecvPort, config.robotSendPort);
         }
 
         agent->Run();

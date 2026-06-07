@@ -10,9 +10,9 @@
 
 namespace voice_agent {
 
-class AgentToolOrchestrator {
+class AgentOrchestrator {
 public:
-    AgentToolOrchestrator(
+    AgentOrchestrator(
         IInterpreter& interpreter,
         const std::vector<ITool*>& tools,
         const AppConfig& config,

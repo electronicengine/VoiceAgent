@@ -1,36 +1,44 @@
 #pragma once
 
-#include "agent/AgentToolOrchestrator.h"
+#include "AgentOrchestrator.h"
 #include "common/CancellationToken.h"
 #include "interpreter/IInterpreter.h"
+#include "interface/IAgentInterface.h"
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace voice_agent {
 
 class Agent {
-public:
-    Agent(
-        std::unique_ptr<IInterpreter> interpreter,
-        std::string systemPrompt,
-        AgentToolOrchestrator agentOrchestrator
-    );
+    public:
+        Agent(
+            std::unique_ptr<IInterpreter> interpreter,
+            std::string systemPrompt,
+            AgentOrchestrator agentOrchestrator
+        );
 
-    virtual ~Agent() = default;
+        virtual ~Agent() = default;
 
-    virtual void Run() = 0;
+        virtual void Run() = 0;
 
-protected:
-    AgentTurnResult RunTurn(
-        const std::string& userText,
-        const InterpreterStreamCallback& onPartialResponse,
-        const CancellationToken* token = nullptr,
-        const AnnouncementCallback& onAnnouncement = {}) const;
+        void AddInterface(std::shared_ptr<IAgentInterface> agentInterface) {
+            interfaces_.push_back(std::move(agentInterface));
+        }
 
-private:
-    std::unique_ptr<IInterpreter> interpreter_;
-    AgentToolOrchestrator agentOrchestrator_;
+    protected:
+        AgentTurnResult RunTurn(
+            const std::string& userText,
+            const InterpreterStreamCallback& onPartialResponse,
+            const CancellationToken* token = nullptr,
+            const AnnouncementCallback& onAnnouncement = {}) const;
+
+    private:
+        std::unique_ptr<IInterpreter> interpreter_;
+        AgentOrchestrator agentOrchestrator_;
+    protected:
+        std::vector<std::shared_ptr<IAgentInterface>> interfaces_;
 };
 
 }  // namespace voice_agent

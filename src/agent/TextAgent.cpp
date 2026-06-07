@@ -13,7 +13,7 @@ namespace voice_agent {
 TextAgent::TextAgent(
     std::unique_ptr<IInterpreter> interpreter,
     std::string systemPrompt,
-    AgentToolOrchestrator agentOrchestrator)
+    AgentOrchestrator agentOrchestrator)
     : Agent(std::move(interpreter), std::move(systemPrompt), std::move(agentOrchestrator)) {}
 
 void TextAgent::Run() {

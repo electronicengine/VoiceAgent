@@ -196,7 +196,7 @@ endif()
 add_executable(cpp_voice_agent
     src/main.cpp
     src/agent/Agent.cpp
-    src/agent/AgentToolOrchestrator.cpp
+    src/agent/AgentOrchestrator.cpp
     src/agent/TextAgent.cpp
     src/agent/VoiceAgent.cpp
     src/audio/AlsaMicrophone.cpp
@@ -209,6 +209,9 @@ add_executable(cpp_voice_agent
     src/common/llama_operator.cpp
     src/common/StdinUserPromptProvider.cpp
     src/common/StringUtils.cpp
+    src/interface/UdpClientSocket.cpp
+    src/interface/UdpServerSocket.cpp
+    src/interface/RobotControllerInterface.cpp
     src/common/VoiceUserPromptProvider.cpp
     src/config/AccountStore.cpp
     src/config/AppConfig.cpp
@@ -268,14 +271,16 @@ add_executable(voice_agent_tests
     tests/tooltest/PythonToolTest.cpp
     tests/tooltest/ShellToolTest.cpp
     tests/tooltest/RegistryToolTest.cpp
-    tests/agenttest/AgentToolOrchestratorTest.cpp
+    tests/agenttest/AgentOrchestratorTest.cpp
     tests/registrytest/SqliteDatabaseTest.cpp
     tests/registrytest/LlamaOperatorTest.cpp
     tests/registrytest/SkillRegistryTest.cpp
     tests/registrytest/ExperienceRegistryTest.cpp
     tests/registrytest/NoteRegistryTest.cpp
     tests/registrytest/RegistryControllerTest.cpp
-    src/agent/AgentToolOrchestrator.cpp
+    tests/interfacetest/RobotControllerInterfaceTest.cpp
+    tests/interfacetest/UdpSocketTest.cpp
+    src/agent/AgentOrchestrator.cpp
     src/common/StringUtils.cpp
     src/common/llama_operator.cpp
     src/registry/SqliteDatabase.cpp
@@ -287,6 +292,9 @@ add_executable(voice_agent_tests
     src/tools/PythonTool.cpp
     src/tools/ShellTool.cpp
     src/tools/RegistryTool.cpp
+    src/interface/UdpClientSocket.cpp
+    src/interface/UdpServerSocket.cpp
+    src/interface/RobotControllerInterface.cpp
 )
 
 target_include_directories(voice_agent_tests PRIVATE 

@@ -12,7 +12,7 @@ public:
     TextAgent(
         std::unique_ptr<IInterpreter> interpreter,
         std::string systemPrompt,
-        AgentToolOrchestrator agentOrchestrator
+        AgentOrchestrator agentOrchestrator
     );
 
     void Run() override;

@@ -16,7 +16,7 @@ VoiceAgent::VoiceAgent(
     std::unique_ptr<ISynthesizer> synthesizer,
     std::unique_ptr<VoiceController> voiceController,
     std::string systemPrompt,
-    AgentToolOrchestrator agentOrchestrator)
+    AgentOrchestrator agentOrchestrator)
     : Agent(std::move(interpreter), std::move(systemPrompt), std::move(agentOrchestrator)),
       transcriber_(std::move(transcriber)),
       synthesizer_(std::move(synthesizer)),

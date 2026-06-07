@@ -1,4 +1,4 @@
-#include "agent/AgentToolOrchestrator.h"
+#include "agent/AgentOrchestrator.h"
 
 #include "common/StringUtils.h"
 #include "common/logger.h"
@@ -30,7 +30,7 @@ bool ContainsAny(const std::string& haystack, const std::initializer_list<const 
 
 }  // namespace
 
-AgentToolOrchestrator::AgentToolOrchestrator(
+AgentOrchestrator::AgentOrchestrator(
         IInterpreter& interpreter,
         const std::vector<ITool*>& tools,
         const AppConfig& config,
@@ -41,7 +41,7 @@ AgentToolOrchestrator::AgentToolOrchestrator(
       maxAgentSteps_(config.maxAgentSteps),
       maxSkillsPerTurn_(static_cast<std::size_t>(config.maxSkillsPerTurn > 0 ? config.maxSkillsPerTurn : 3)) {}
 
-AgentTurnResult AgentToolOrchestrator::RunTurn(
+AgentTurnResult AgentOrchestrator::RunTurn(
     const std::string& userText,
     const InterpreterStreamCallback& onPartialResponse,
     const CancellationToken* token,
@@ -132,7 +132,7 @@ AgentTurnResult AgentToolOrchestrator::RunTurn(
     return result;
 }
 
-std::vector<ToolCall> AgentToolOrchestrator::ParseToolCalls(const InterpreterResponse& response) const {
+std::vector<ToolCall> AgentOrchestrator::ParseToolCalls(const InterpreterResponse& response) const {
     std::vector<ToolCall> calls;
     
     for (const auto& segment : response.segments) {
@@ -173,7 +173,7 @@ std::vector<ToolCall> AgentToolOrchestrator::ParseToolCalls(const InterpreterRes
     return calls;
 }
 
-const ITool* AgentToolOrchestrator::ResolveTool(const std::string& toolName) const {
+const ITool* AgentOrchestrator::ResolveTool(const std::string& toolName) const {
     for (const ITool* tool : tools_) {
         if (tool != nullptr && MatchesToolName(tool->Definition(), toolName)) {
             return tool;
@@ -183,7 +183,7 @@ const ITool* AgentToolOrchestrator::ResolveTool(const std::string& toolName) con
     return nullptr;
 }
 
-InterpreterInput AgentToolOrchestrator::FormatToolResultMessage(
+InterpreterInput AgentOrchestrator::FormatToolResultMessage(
     const std::vector<std::pair<ToolCall, ToolResult>>& stepResults,
     const std::string& /*originalUserText*/) const {
     InterpreterInput input;

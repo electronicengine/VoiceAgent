@@ -1,4 +1,4 @@
-#include "AgentToolOrchestratorTest.h"
+#include "AgentOrchestratorTest.h"
 #include <iostream>
 #include <stdexcept>
 
@@ -31,7 +31,7 @@ ToolResult MockTool::Execute(const ToolCall& call, const CancellationToken* toke
     return res;
 }
 
-TEST_F(AgentToolOrchestratorTest, TestMultipleToolCallsInOneTurn) {
+TEST_F(AgentOrchestratorTest, TestMultipleToolCallsInOneTurn) {
     MockInterpreter interpreter;
     
     // Step 1: 2 tool calls in separate segments
@@ -52,7 +52,7 @@ TEST_F(AgentToolOrchestratorTest, TestMultipleToolCallsInOneTurn) {
     AppConfig config;
     config.maxAgentSteps = 5;
     
-    AgentToolOrchestrator orchestrator(interpreter, tools, config);
+    AgentOrchestrator orchestrator(interpreter, tools, config);
     
     auto result = orchestrator.RunTurn("hello", nullptr);
     
@@ -65,7 +65,7 @@ TEST_F(AgentToolOrchestratorTest, TestMultipleToolCallsInOneTurn) {
     EXPECT_NE(interpreter.lastInput.text.find("tool2"), std::string::npos);
 }
 
-TEST_F(AgentToolOrchestratorTest, TestJsonArrayToolCalls) {
+TEST_F(AgentOrchestratorTest, TestJsonArrayToolCalls) {
     MockInterpreter interpreter;
     
     // Step 1: 2 tool calls in ONE segment as an array
@@ -85,7 +85,7 @@ TEST_F(AgentToolOrchestratorTest, TestJsonArrayToolCalls) {
     AppConfig config;
     config.maxAgentSteps = 5;
     
-    AgentToolOrchestrator orchestrator(interpreter, tools, config);
+    AgentOrchestrator orchestrator(interpreter, tools, config);
     
     orchestrator.RunTurn("hello", nullptr);
     
