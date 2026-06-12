@@ -34,7 +34,7 @@ bool UdpServerSocket::bindSocket(int port) {
     servAddr.sin_port = htons(port);
 
     if (bind(sockfd_, (const struct sockaddr *)&servAddr, sizeof(servAddr)) < 0) {
-        ERROR("Failed to bind UDP server socket to port ", port);
+        ERROR("Failed to bind UDP server socket to port {}", port);
         return false;
     }
     return true;

@@ -1,0 +1,113 @@
+[33mcommit cb14e9877bb8a7f947b4b02ae6c48a7ab38909be[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Fri Jun 12 22:13:42 2026 +0300
+
+    huge dev
+
+[33mcommit 83cc68a1fc1c60339e82aaa953b725007ffb578a[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Fri Jun 12 22:11:18 2026 +0300
+
+    huge dev
+
+[33mcommit 7274b1e8c42371a9314c23a9cf422183054f0c6c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun Jun 7 22:30:26 2026 +0300
+
+    last
+
+[33mcommit cbb940362ab3342761bd4be1746b76ae3e620e24[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun Jun 7 03:51:03 2026 +0300
+
+    last
+
+[33mcommit 5c1f87b3fdcf335b6829f5ffbfa3a5ac74f989d6[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun Jun 7 01:26:18 2026 +0300
+
+    some fix
+
+[33mcommit e6d286e5921117f77412e9501d151ce7f1e5c6ae[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat Jun 6 23:16:56 2026 +0300
+
+    final: cleanup and update project state
+
+[33mcommit e90a75cc3ce124a09f03bdbafc1b6036e25a1e40[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat Jun 6 23:15:30 2026 +0300
+
+    final: update and cleanup
+
+[33mcommit 7be637900c62fdb80d3bf47b761f41a245e3e887[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat Jun 6 23:14:35 2026 +0300
+
+    final: cleanup and update project state
+
+[33mcommit a7ab5969cba8002da364860b17221f3f9e793fe9[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun May 31 21:02:24 2026 +0300
+
+    Simplify account profile config
+
+[33mcommit 9584806bde760a351f4b46aa331cb13b56162c36[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun May 31 19:11:28 2026 +0300
+
+     carried loginUrl ,loggedInUrl loginCheckSelector to skills files
+
+[33mcommit 59de31ed875f7f330f4e6bcd4e559f30d95a226a[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun May 31 18:52:21 2026 +0300
+
+    generic webbrowser runner
+
+[33mcommit 2c4514b9fa2c0fd12678c072e772765379df0ee4[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun May 31 16:41:10 2026 +0300
+
+    linkedin account added
+
+[33mcommit fe498522f575715e17cdf6e2d2ea66c577d83172[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sun May 31 13:58:59 2026 +0300
+
+    skills added, while speaking threshold is increased
+
+[33mcommit 557e9bbdf52a037234647bceb540816b3c85e40b[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat May 30 22:45:47 2026 +0300
+
+    yt music
+
+[33mcommit a0dccfd121baee0a0a4e60f047fb44979e3fc12b[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat May 30 18:22:30 2026 +0300
+
+    better web tool
+
+[33mcommit 808ca5093882648b33e5634d0cdb0fb22c6ed985[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat May 30 17:07:38 2026 +0300
+
+    updated aec3 and deps
+
+[33mcommit 9a46bab198a2d6b9493cb365f6bdae08be640a75[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Sat May 30 16:20:06 2026 +0300
+
+    aec  + vad
+
+[33mcommit c668c65216dd81547408bf8d658390fa279fe31a[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Wed May 27 22:32:43 2026 +0300
+
+    last
+
+[33mcommit bc5af565c200a30b8651c2ede83ee048980b7da0[m
+Author: electronicengine <y.bulbul@hotmail.com>
+Date:   Tue May 26 14:46:13 2026 +0300
+
+    Initial commit

@@ -30,7 +30,7 @@ AgentTurnResult Agent::RunTurn(
             std::string sentence = partialResponse.SpeakableText();
             if (!sentence.empty()) {
                 for (const auto& iface : interfaces_) {
-                    iface->onSpeakableText(sentence);
+                   iface->onSpeakableText(sentence);
                 }
             }
         }

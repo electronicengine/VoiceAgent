@@ -283,6 +283,7 @@ AppConfig LoadConfig() {
     const nlohmann::json* transcriberAzureJson = ReadSection(transcriberJson, "azure");
     const nlohmann::json* transcriberDeepgramJson = ReadSection(transcriberJson, "deepgram");
     const nlohmann::json* interpreterOpenAiJson = ReadSection(interpreterJson, "openai");
+    const nlohmann::json* interpreterGoogleAiJson = ReadSection(interpreterJson, "googleai");
     const nlohmann::json* synthesizerAzureJson = ReadSection(synthesizerJson, "azure");
 
     AppConfig config;
@@ -338,6 +339,14 @@ AppConfig LoadConfig() {
     );
     config.openAiModel = ReadStringField(interpreterOpenAiJson, configJson, "openAiModel", "gpt-4o");
     config.openAiAssistantId = ReadStringField(interpreterOpenAiJson, configJson, "openAiAssistantId");
+    config.googleAiApiKey = ReadStringField(interpreterGoogleAiJson, configJson, "googleAiApiKey");
+    config.googleAiBaseUrl = ReadStringField(
+        interpreterGoogleAiJson,
+        configJson,
+        "googleAiBaseUrl",
+        "https://generativelanguage.googleapis.com/v1beta"
+    );
+    config.googleAiModel = ReadStringField(interpreterGoogleAiJson, configJson, "googleAiModel", "gemini-2.0-flash");
     config.systemPromptFilePath = ReadStringField(
         interpreterOpenAiJson,
         configJson,
@@ -372,7 +381,7 @@ AppConfig LoadConfig() {
     config.vadStartSpeechMs = ReadPositiveIntField(transcriberJson, configJson, "vadStartSpeechMs", 200);
     config.vadEndSilenceMs = ReadPositiveIntField(transcriberJson, configJson, "vadEndSilenceMs", 800);
     config.vadMaxCaptureMs = ReadPositiveIntField(transcriberJson, configJson, "vadMaxCaptureMs", 25000);
-    config.vadPreRollMs = ReadPositiveIntField(transcriberJson, configJson, "vadPreRollMs", 200);
+    config.vadPreRollMs = ReadPositiveIntField(transcriberJson, configJson, "vadPreRollMs", 1000);
     config.vadAmplitudeThreshold = ReadPositiveIntField(
         transcriberJson,
         configJson,
@@ -417,6 +426,15 @@ AppConfig LoadConfig() {
     config.browserPromptTimeoutSeconds = ReadPositiveIntField(
         configJson, "browserPromptTimeoutSeconds", 180
     );
+
+    {
+        const nlohmann::json* robotJson = ReadSection(configJson, "robot");
+        config.robotInterfaceEnabled = ReadBoolField(robotJson, configJson, "robotInterfaceEnabled", true);
+        config.robotIp = ReadStringField(robotJson, configJson, "robotIp", "127.0.0.1");
+        config.robotSendPort = ReadPositiveIntField(robotJson, configJson, "robotSendPort", 5005);
+        config.robotRecvPort = ReadPositiveIntField(robotJson, configJson, "robotRecvPort", 5006);
+        config.robotConfigFilePath = ReadStringField(robotJson, configJson, "robotConfigFilePath", "/usr/local/etc/gesture_config_tr.json");
+    }
 
     {
         const nlohmann::json* skillsJson = ReadSection(configJson, "skills");
@@ -483,8 +501,8 @@ AppConfig LoadConfig() {
     if (config.transcriberProvider != "azure" && config.transcriberProvider != "deepgram") {
         throw std::runtime_error("transcriber.provider must be either 'azure' or 'deepgram'.");
     }
-    if (config.interpreterProvider != "openai") {
-        throw std::runtime_error("interpreter.provider must be 'openai'.");
+    if (config.interpreterProvider != "openai" && config.interpreterProvider != "googleai") {
+        throw std::runtime_error("interpreter.provider must be 'openai' or 'googleai'.");
     }
     if (config.synthesizerProvider != "azure") {
         throw std::runtime_error("synthesizer.provider must be 'azure'.");

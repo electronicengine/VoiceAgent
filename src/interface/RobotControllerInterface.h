@@ -28,6 +28,7 @@ public:
     void pollSensorData();
 
 private:
+    bool sendMessage(MessageType type, const std::string& data);
     void loadConfig(const std::string& configFilePath);
     float cosineSimilarity(const std::vector<float>& vecA, const std::vector<float>& vecB) const;
     void precomputeEmbeddings();
@@ -40,6 +41,7 @@ private:
     std::vector<EmotionalGesture> emotions_;
     std::vector<ReactionalGesture> reactions_;
     std::vector<Directive> directives_;
+    std::vector<std::vector<float>> sensorTriggerEmbeddings_;
 
     SensorData currentSensorData_;
 };

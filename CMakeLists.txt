@@ -36,7 +36,6 @@ FetchContent_Declare(
     llama_cpp
     GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
     GIT_TAG        260862b8ca2c9a652c297488c623997c492310cf # Sabit commit hash (master yerine)
-    GIT_SHALLOW    TRUE
     GIT_PROGRESS   TRUE
     UPDATE_DISCONNECTED ON
 )
@@ -216,6 +215,7 @@ add_executable(cpp_voice_agent
     src/config/AccountStore.cpp
     src/config/AppConfig.cpp
     src/interpreter/OpenAiInterpreter.cpp
+    src/interpreter/GoogleAiInterpreter.cpp
     src/registry/SqliteDatabase.cpp
     src/registry/SkillRegistry.cpp
     src/registry/ExperienceRegistry.cpp
@@ -280,6 +280,9 @@ add_executable(voice_agent_tests
     tests/registrytest/RegistryControllerTest.cpp
     tests/interfacetest/RobotControllerInterfaceTest.cpp
     tests/interfacetest/UdpSocketTest.cpp
+    tests/interpretertest/GoogleAiInterpreterTest.cpp
+    src/interpreter/GoogleAiInterpreter.cpp
+    src/common/HttpClient.cpp
     src/agent/AgentOrchestrator.cpp
     src/common/StringUtils.cpp
     src/common/llama_operator.cpp
@@ -295,6 +298,9 @@ add_executable(voice_agent_tests
     src/interface/UdpClientSocket.cpp
     src/interface/UdpServerSocket.cpp
     src/interface/RobotControllerInterface.cpp
+    src/audio/VoiceActivityDetector.cpp
+    src/audio/VadDetector.cpp
+    src/audio/EchoCanceller.cpp
 )
 
 target_include_directories(voice_agent_tests PRIVATE 
@@ -319,6 +325,9 @@ target_link_libraries(voice_agent_tests
         Threads::Threads
         fmt::fmt
         GTest::gtest_main
+        fvad
+        PkgConfig::WEBRTC_APM
+        CURL::libcurl
 )
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

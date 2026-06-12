@@ -18,6 +18,9 @@ struct AppConfig {
     std::string openAiBaseUrl;
     std::string openAiModel;
     std::string openAiAssistantId;
+    std::string googleAiApiKey;
+    std::string googleAiBaseUrl;
+    std::string googleAiModel;
     std::string systemPromptFilePath;
     std::string resolvedSystemPromptFilePath;
     std::string speechLanguage;

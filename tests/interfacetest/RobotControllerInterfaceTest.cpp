@@ -1,6 +1,7 @@
 #include "RobotControllerInterfaceTest.h"
 #include "interface/RobotControllerInterface.h"
 #include "interface/IUdpSocket.h"
+#include "interface/UdpClientSocket.h"
 #include <fstream>
 #include <thread>
 #include <chrono>
@@ -93,13 +94,16 @@ TEST_F(RobotControllerInterfaceTest, UserTextInjection) {
         }
     })";
     
-    mockSocketPtr->pushMockData(mockData);
+    nlohmann::json packet;
+    packet["type"] = static_cast<int>(MessageType::SensorData);
+    packet["payload"] = mockData;
+    mockSocketPtr->pushMockData(packet.dump());
     
-    std::string userText = "Hello robot";
+    std::string userText = "Şu anki durumun nedir?";
     std::string processed = robot.processUserText(userText);
-
+        
     EXPECT_NE(processed, userText);
-    EXPECT_TRUE(processed.find("Robot sensor state:") != std::string::npos);
+    EXPECT_TRUE(processed.find("Robot Sensör bilgileri:") != std::string::npos);
     EXPECT_TRUE(processed.find("90") != std::string::npos); 
 }
 
@@ -112,14 +116,50 @@ TEST_F(RobotControllerInterfaceTest, OnSpeakableTextSimulation) {
 
     RobotControllerInterface robot(llama, std::move(mockSocket), "127.0.0.1", 5007, 5008, "/usr/local/etc/gesture_config_tr.json");
 
-    robot.onSpeakableText("I am very happy to see you!");
+    robot.onSpeakableText("Selam. Bu gün nasılsın?");
 
     EXPECT_FALSE(mockSocketPtr->sentData.empty());
     std::string received = mockSocketPtr->sentData.back();
     
-    auto j = nlohmann::json::parse(received);
+    auto packet = nlohmann::json::parse(received);
+    EXPECT_TRUE(packet.contains("type"));
+    EXPECT_TRUE(packet.contains("payload"));
+    EXPECT_EQ(packet["type"], static_cast<int>(MessageType::LLMResponse));
+
+    auto j = nlohmann::json::parse(packet["payload"].get<std::string>());
     EXPECT_TRUE(j.contains("sentence"));
-    EXPECT_EQ(j["sentence"], "I am very happy to see you!");
+    EXPECT_EQ(j["sentence"], "Selam. Bu gün nasılsın?");
+}
+
+TEST_F(RobotControllerInterfaceTest, OnSpeakableTextRealUdpCommunication) {
+    LlamaOperator llama;
+    
+    llama.loadEmbedModel("/usr/local/ai.models/llamaModel/mxbaiV1.gguf", llama_pooling_type::LLAMA_POOLING_TYPE_CLS);
+    std::unique_ptr<UdpClientSocket> realSocket = std::make_unique<UdpClientSocket>();
+
+    RobotControllerInterface robot(llama, std::move(realSocket), "127.0.0.1", 5005, 5006, "/usr/local/etc/gesture_config_tr.json");
+
+    robot.onSpeakableText("Selam. Bu gün nasılsın?");
+
+    EXPECT_TRUE(true);
+}
+
+TEST_F(RobotControllerInterfaceTest, UserTextInjectionRealUdpCommunication) {
+    LlamaOperator llama;
+    llama.loadEmbedModel("/usr/local/ai.models/llamaModel/mxbaiV1.gguf", llama_pooling_type::LLAMA_POOLING_TYPE_CLS);
+    
+    std::unique_ptr<UdpClientSocket> realSocket = std::make_unique<UdpClientSocket>();
+
+    // RobotControllerInterface listens on 5008, sends to 5007
+    RobotControllerInterface robot(llama, std::move(realSocket), "127.0.0.1", 5005, 5006, "/usr/local/etc/gesture_config_tr.json");
+
+    std::string userText = "Şu anki durumun nedir?";
+    std::string processed = robot.processUserText(userText);
+    std::cout << "Processed user text: " << processed << std::endl;
+
+    EXPECT_NE(processed, userText);
+    EXPECT_TRUE(processed.find("Robot Sensör bilgileri:") != std::string::npos);
+    EXPECT_TRUE(processed.find("90") != std::string::npos); 
 }
 
 } // namespace voice_agent

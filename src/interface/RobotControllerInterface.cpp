@@ -34,7 +34,7 @@ RobotControllerInterface::~RobotControllerInterface() = default;
 void RobotControllerInterface::loadConfig(const std::string& configFilePath) {
     std::ifstream file(configFilePath);
     if (!file.is_open()) {
-        ERROR("Failed to open config file: ", configFilePath);
+        ERROR("Failed to open config file: {}", configFilePath);
         return;
     }
 
@@ -45,7 +45,8 @@ void RobotControllerInterface::loadConfig(const std::string& configFilePath) {
         if (configJson.contains("emotional_gestures")) {
             for (const auto& item : configJson["emotional_gestures"]) {
                 EmotionalGesture eg;
-                eg.emotion = item.value("type", "");
+                std::string emotionString = item.value("type", "");
+                eg.emotion = stringToEmotionType(emotionString);
                 eg.symbol = item.value("tag", "");
                 eg.description = item.value("description", "");
                 emotions_.push_back(eg);
@@ -55,8 +56,9 @@ void RobotControllerInterface::loadConfig(const std::string& configFilePath) {
         if (configJson.contains("reactional_gestures")) {
             for (const auto& item : configJson["reactional_gestures"]) {
                 ReactionalGesture rg;
-                rg.reaction = item.value("type", "");
-                rg.antiReaction = item.value("reply", "");
+                std::string reactionString = item.value("type", "");
+                rg.reaction = stringToReactionType(reactionString);
+                rg.antiReaction = stringToReactionType(item.value("anti_reaction", ""));
                 rg.symbol = item.value("tag", "");
                 rg.description = item.value("description", "");
                 reactions_.push_back(rg);
@@ -66,7 +68,8 @@ void RobotControllerInterface::loadConfig(const std::string& configFilePath) {
         if (configJson.contains("directives")) {
             for (const auto& item : configJson["directives"]) {
                 Directive d;
-                d.directive = item.value("type", "");
+                std::string directiveString = item.value("type", "");
+                d.directive = stringToDirectiveType(directiveString);
                 d.symbol = item.value("tag", "");
                 d.description = item.value("description", "");
                 directives_.push_back(d);
@@ -74,7 +77,7 @@ void RobotControllerInterface::loadConfig(const std::string& configFilePath) {
         }
 
     } catch (const std::exception& e) {
-        ERROR("Error parsing config file: ",  e.what());
+        ERROR("Error parsing config file: {}",  e.what());
     }
 }
 
@@ -93,6 +96,15 @@ void RobotControllerInterface::precomputeEmbeddings() {
         if (!d.description.empty()) {
             d.embedding = llamaOperator_.calculateEmbeddings(d.description);
         }
+    }
+
+    std::vector<std::string> sensorPhrases = {
+        "Sensör değerleri ve robot bilgileri",
+        "Engel tespiti ve çevre haritası",
+        "Motor pozisyon bilgileri ve robot durum bilgisi."
+    };
+    for (const auto& phrase : sensorPhrases) {
+        sensorTriggerEmbeddings_.push_back(llamaOperator_.calculateEmbeddings(phrase));
     }
 }
 
@@ -116,12 +128,23 @@ float RobotControllerInterface::cosineSimilarity(const std::vector<float>& vecA,
 
 std::string RobotControllerInterface::processUserText(const std::string& userText) {
     std::vector<float> sentenceEmbedding = llamaOperator_.calculateEmbeddings(userText);
-    std::vector<float> motor_info = llamaOperator_.calculateEmbeddings("Sensör değerleri soruluyor");
-    std::vector<float> sensorvalues = llamaOperator_.calculateEmbeddings("Robot ne görüyor, nasıl algılıyor");
-    std::vector<float> motor_info = llamaOperator_.calculateEmbeddings("Engel tespiti ve çevre haritası");
-    std::vector<float> motor_info = llamaOperator_.calculateEmbeddings("Motor pozisyon bilgileri ve durum bilgisi.");
+    INFO("sentenceEmbedding.size: {}", sentenceEmbedding.size());
+    bool shouldPoll = false;
+    float threshold = 0.6f;
 
+    for (const auto& triggerEmbedding : sensorTriggerEmbeddings_) {
+        auto sim = llamaOperator_.getSimilarity(sentenceEmbedding, triggerEmbedding);
+        INFO("triggerEmbedding.size: {}", triggerEmbedding.size());
+        INFO("sim: {}", sim);
+        if (sim > threshold) {
+            shouldPoll = true;
+            break;
+        }
+    }
 
+    if (!shouldPoll) {
+        return userText;
+    }
 
     pollSensorData();
 
@@ -130,8 +153,11 @@ std::string RobotControllerInterface::processUserText(const std::string& userTex
         return userText;
     }
 
+    std::string processd = "Robot Sensör bilgileri: " + sensorInfo + "\n Kullanıcı Sorusu: " + userText;
+    INFO("processed: {}", processd);
+
     // Inject sensor data into user text so the language model is aware
-    return "Robot sensor state: " + sensorInfo + "\n User says: " + userText;
+    return processd;
 }
 
 void RobotControllerInterface::onSpeakableText(const std::string& speakableText) {
@@ -144,7 +170,7 @@ void RobotControllerInterface::onSpeakableText(const std::string& speakableText)
     responseData.emotionSimilarity = -1.0f;
     responseData.reactionSimilarity = -1.0f;
     responseData.directiveSimilarity = -1.0f;
-    responseData.endMarker = true;
+    responseData.endMarker = false;
 
     // Find best emotion
     for (const auto& eg : emotions_) {
@@ -173,16 +199,40 @@ void RobotControllerInterface::onSpeakableText(const std::string& speakableText)
         }
     }
 
+    //DEBUG("Sending message MessageType::LLMResponse: {}", responseData.to_json());
+
     // Send the control directive to the robot
-    udpSocket_->sendData(responseData.to_json());
+    sendMessage(MessageType::LLMResponse, responseData.to_json());
+}
+
+bool RobotControllerInterface::sendMessage(MessageType type, const std::string& data) {
+    Json packet;
+    packet["type"] = static_cast<int>(type);
+    packet["payload"] = data;
+    return udpSocket_->sendData(packet.dump());
 }
 
 void RobotControllerInterface::pollSensorData() {
     // Attempt to receive data, non-blocking
-    udpSocket_->sendData/
-    std::string data = udpSocket_->receiveData(0);
-    while (!data.empty()) {
+    sendMessage(MessageType::SensorReadRequest, "");
+    std::string rawPacket = udpSocket_->receiveData(10);
+    INFO("Received raw packet: {}", rawPacket);
+    if (!rawPacket.empty()) {
         try {
+            Json packet = Json::parse(rawPacket);
+            if (!packet.contains("type") || !packet.contains("payload")) {
+                WARNING("Received malformed packet: {}", rawPacket);
+                return;
+            }
+
+            MessageType type = static_cast<MessageType>(packet["type"].get<int>());
+            if (type != MessageType::SensorData) {
+                WARNING("Received unexpected message type: {}", static_cast<int>(type));
+                WARNING("Received  payload: {}", packet["payload"].get<std::string>());
+                return;
+            }
+
+            std::string data = packet["payload"];
             Json j = Json::parse(data);
             
             // Assume the json structure matches what we parse below
@@ -220,11 +270,9 @@ void RobotControllerInterface::pollSensorData() {
                 currentSensorData_.currentJointAngles = joints;
             }
         } catch (...) {
-            // Ignore parse errors from robot
+            ERROR("Error parsing sensor data packet: {}", rawPacket);
         }
         
-        // Grab the next packet if available to empty the buffer
-        data = udpSocket_->receiveData(0);
     }
 }
 

@@ -14,6 +14,7 @@
 #include "config/AccountStore.h"
 #include "agent/TextAgent.h"
 #include "interpreter/OpenAiInterpreter.h"
+#include "interpreter/GoogleAiInterpreter.h"
 #include "registry/RegistryController.h"
 #include "tools/PythonTool.h"
 #include "tools/ProjectFilesTool.h"
@@ -90,7 +91,12 @@ int main() {
             ERROR("account.json yuklenemedi: {}", ex.what());
         }
 
-        auto interpreter = std::make_unique<voice_agent::OpenAiInterpreter>(config);
+        std::unique_ptr<voice_agent::IInterpreter> interpreter;
+        if (config.interpreterProvider == "googleai") {
+            interpreter = std::make_unique<voice_agent::GoogleAiInterpreter>(config);
+        } else {
+            interpreter = std::make_unique<voice_agent::OpenAiInterpreter>(config);
+        }
         voice_agent::ShellTool shellTool(
             config.resolvedPythonToolScriptRoot.empty()
                 ? std::filesystem::absolute("scripts")

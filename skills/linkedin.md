@@ -20,6 +20,8 @@ wb_runner.py kullanım taslağı:
 }
 
 
+Sayfalarda gezinirken ve bir sayfaya girdiğinde sayfanın tam olarak açıldığına emin olana dek bekle. belki 3,4 sn bekleyebilirsin. 
+
 * Linkedin sayfası ilk açıldıiında reklam, restore veya interstitial sayfası veya pop up ı çıkabilir.  Bu, oturumun kapalı veya işlevsiz olduğu anlamına gelmez. Böyle bir durumda `steps` içine ilk iş olarak `click_first` ekleyip  "Back to LinkedIn", "Restore", "Continue to LinkedIn" benzeri butonlarla bu reklam sayfasını kapat. 
 * Linkedin bildirimleri ile ilgili işlemler için doğrudan `https://www.linkedin.com/notifications/` sayfasına giderek ilgili işlemi yap.
 * Linkedin Mesajları ile ilgili işlemler için dogrudan `https://www.linkedin.com/messaging/` sayfasina giderek ilgili işlemleri gerçekleştir.

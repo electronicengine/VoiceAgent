@@ -1,11 +1,13 @@
 ---
 {
   "name": "music",
-  "description": "Muzik/sarki calma ve durdurma (mpv + yt-dlp).",
+  "description": "Müzik ve şarkı çalmak ve durdurmak için kullanılan yetenektir. Örneğin Tarkan'dan Dudu Dudu Dilleri çal.",
 }
 ---
 Müzik / Şarkı Çalma:
-Kullanıcı "müzik çal", "şarkı çal", "X şarkısını aç", "YT Music'ten Y çal" gibi bir istekte bulunduğunda ASLA browser otomasyonu kullanma — headless tarayıcının ses çıkışı yok ve YT Music DRM gerektiriyor. Bunun yerine ShellTool ile mpv + yt-dlp kombinasyonunu kullan. mpv yt-dlp aracılığıyla YouTube'dan ses akışı çekip robotun PipeWire/Pulse hoparlör sink'ine basar.
+Kullanıcı "müzik çal", "şarkı çal", "X şarkısını aç", "YT Music'ten Y çal" gibi bir istekte bulunduğunda browser otomasyonu kullanma — headless tarayıcının ses çıkışı yok ve YT Music DRM gerektiriyor. Bunun yerine ShellTool ile mpv + yt-dlp kombinasyonunu kullan. mpv yt-dlp aracılığıyla YouTube'dan ses akışı çekip robotun PipeWire/Pulse hoparlör sink'ine basar.
+
+Müzik çalmak için ilgili shell komutunu ShellTool ile ilgili komutları çalıştırarak kullan.
 
 Çalma kuralları:
 - Yeni bir parça çalmadan önce çalan başka bir mpv varsa kapat: `pkill -x mpv 2>/dev/null; sleep 0.3`.

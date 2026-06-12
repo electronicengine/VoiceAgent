@@ -25,7 +25,7 @@
     "vadStartSpeechMs": 200,
     "vadEndSilenceMs": 800,
     "vadMaxCaptureMs": 25000,
-    "vadPreRollMs": 200,
+    "vadPreRollMs": 1000,
     "vadAmplitudeThreshold": 2500,
     "azure": {
       "azureSpeechKey": "",
@@ -61,5 +61,12 @@
       "speechSampleRate": 16000,
       "voiceName": "en-US-DustinMultilingualNeural"
     }
+  },
+  "robot": {
+    "robotInterfaceEnabled": true,
+    "robotIp": "127.0.0.1",
+    "robotSendPort": 5005,
+    "robotRecvPort": 5006,
+    "robotConfigFilePath": "/usr/local/etc/gesture_config_tr.json"
   }
 }

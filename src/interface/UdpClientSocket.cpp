@@ -33,7 +33,7 @@ bool UdpClientSocket::bindSocket(int port) {
     servAddr.sin_port = htons(port);
 
     if (bind(sockfd_, (const struct sockaddr *)&servAddr, sizeof(servAddr)) < 0) {
-        ERROR("Failed to bind UDP socket to port ", port );
+        ERROR("Failed to bind UDP socket to port {}", port );
         return false;
     }
     return true;
@@ -72,12 +72,11 @@ std::string UdpClientSocket::receiveData(int timeoutMs) {
     struct sockaddr_in cliAddr;
     socklen_t len = sizeof(cliAddr);
 
-    ssize_t n = recvfrom(sockfd_, buffer, sizeof(buffer) - 1,
+    ssize_t n = recvfrom(sockfd_, buffer, sizeof(buffer),
         0, (struct sockaddr *)&cliAddr, &len);
 
     if (n > 0) {
-        buffer[n] = '\0';
-        return std::string(buffer);
+        return std::string(buffer, n);
     }
     return "";
 }
